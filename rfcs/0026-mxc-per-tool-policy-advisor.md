@@ -3,7 +3,7 @@ title: MXC Per-Tool Policy Advisor
 authors:
   - Chaz Gordish
 created: 2026-07-21
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 status: draft
 issue:
 rfc_pr:
@@ -18,14 +18,17 @@ before execution. Policies can match a specific tool and argument set or all
 calls to a tool, allow or deny the call, and provide a containment envelope for
 MXC-backed execution. Policy state is stored in OpenClaw's SQLite state
 database, unmatched calls remain allowed for compatibility, and policy
-evaluation failures block the affected call.
+evaluation failures block the affected call. Every MXC-backed call receives a
+built-in MXC baseline, and matching per-tool policies can add the access needed
+by that tool or impose additional restrictions.
 
 ## Motivation
 
-OpenClaw currently applies a sandbox policy at a broader session or backend
-scope. That is insufficient when different tools, or different calls to the
-same tool, require different filesystem, network, capability, and timeout
-access.
+OpenClaw currently applies MXC policy through sandbox backend configuration.
+The built-in MXC baseline provides common execution access, but does not provide
+a policy-store decision for each tool call. Different tools, or different calls
+to the same tool, can require different filesystem, network, capability, and
+timeout access.
 
 For example, an `exec` call that reads repository status should not
 automatically receive the same containment grants as an `exec` call that builds
@@ -55,8 +58,8 @@ call without prompting or creating a new rule.
 - Prompt for an operator decision when a matching policy is still in
   development.
 - Persist mutable policy state in OpenClaw's SQLite state database.
-- Compose tool-specific containment with the built-in MXC floor using the most
-  restrictive result.
+- Prevent MXC-backed tool execution from directly modifying policy state.
+- Combine the built-in MXC baseline with tool-specific grants and restrictions.
 - Validate policy authorization again at the MXC execution boundary.
 - Record metadata-only audit events without storing raw tool arguments.
 - Provide CLI commands for policy inspection and management.
@@ -87,7 +90,7 @@ The MXC plugin owns:
 - Operator approval requests.
 - Policy audit events.
 - Authorization metadata passed to MXC-backed execution.
-- Composition of the selected tool policy with the built-in MXC floor.
+- Composition of the selected tool policy with the built-in MXC baseline.
 - CLI commands used to inspect and manage policies.
 
 OpenClaw core continues to own generic hook execution, approval transport,
@@ -102,6 +105,9 @@ Each tool call resolves to one of three policy states:
 | No matching policy | Allow the call without prompting or creating a policy |
 | Settled exact or wildcard policy | Apply its allow or deny decision immediately |
 | Matching in-development policy | Request `allow-once`, `allow-always`, or `deny` |
+
+Settled deny policies provide a persistent way to block a specific tool call or
+all calls to a tool.
 
 Policy-store read or parse failures are different from a missing policy. A
 missing policy is the permissive compatibility case. A policy evaluation error
@@ -132,7 +138,7 @@ flowchart TD
 
     J --> N{MXC-backed exec?}
     N -->|Yes| O[Validate identity and command correlation]
-    O --> P[Compose tool policy with MXC floor]
+    O --> P[Compose tool policy with MXC baseline]
     P --> Q[Enforce paths, network, capabilities, and timeout]
     Q --> R[Execute through MXC]
     N -->|No| S[Admission decision only]
@@ -204,17 +210,21 @@ An allow policy can provide an MXC execution envelope with:
 - Read-only filesystem paths.
 - Read-write filesystem paths.
 
-The selected envelope cannot widen the built-in MXC floor. The backend composes
-the two using the most restrictive result.
+The effective MXC policy combines the built-in MXC baseline with the selected
+per-tool envelope. The baseline provides access common to all MXC-backed calls.
+A per-tool policy can add filesystem paths or capabilities required by that
+tool, while also applying tool-specific restrictions. Explicit denies and
+platform safety constraints take precedence over grants.
 
 Composition follows these principles:
 
 - Deny is more restrictive than read-only.
 - Read-only is more restrictive than read-write.
 - A narrower path rule takes precedence when parent and child paths overlap.
-- Network access can be narrowed but not widened.
+- Per-tool policies can add read-only paths, read-write paths, and capabilities.
+- Per-tool policies can narrow network access.
 - The lower timeout wins.
-- Capabilities must remain within the built-in MXC grant.
+- Platform safety constraints cannot be overridden by a per-tool policy.
 
 Paths must be normalized for Windows and POSIX separators, case behavior, and
 parent-child relationships before overlap is evaluated.
@@ -270,8 +280,15 @@ namespace. Each rule records:
 - Creation and last-used timestamps.
 - Creation source.
 
-The initial store is bounded to 5,000 policies. Operators manage policy state
-through supported CLI commands rather than editing SQLite directly.
+The initial design does not impose an application-level policy count limit.
+Unmatched calls do not create policy state, so store growth is driven by
+operator-created and imported rules. Operators manage policy state through
+supported CLI commands rather than editing SQLite directly.
+MXC containment must not grant tool execution write access to the OpenClaw state
+directory. OpenClaw and trusted plugin code retain runtime access for policy
+lifecycle and usage updates, while operators manage policies through supported
+management surfaces. Unsandboxed or elevated host execution remains governed by
+its existing host access and approval policy.
 
 ### Policy management
 
@@ -359,10 +376,12 @@ a false tool execution failure.
 4. Exact policies take precedence over wildcard policies.
 5. Settled policies can proceed without prompting.
 6. Automatic settlement remains opt-in.
-7. A tool policy cannot widen the built-in MXC floor.
+7. Per-tool grants compose with the built-in MXC baseline, while explicit
+   denies and platform safety constraints remain authoritative.
 8. The backend validates authorization metadata independently.
 9. MXC-backed `exec` validates command correlation before launch.
-10. Runtime policy state is stored in SQLite, not an agent-writable sidecar.
+10. MXC containment does not grant tool execution write access to runtime policy
+    state. Trusted OpenClaw runtime and operator management paths retain access.
 11. Audit events do not persist raw tool payloads or error text.
 
 ## Rationale
@@ -421,7 +440,6 @@ applying a configured restriction.
   containment enforcement seam?
 - What export, backup, and restore operations are required for SQLite policy
   state?
-- Is 5,000 the correct initial policy limit?
 - Should policy creation remain CLI-driven, or should a future learning mode
   propose development policies without blocking unmatched calls?
 - What is the correct precedence when an implicitly allowed workspace or
