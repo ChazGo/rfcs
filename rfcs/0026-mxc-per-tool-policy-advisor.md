@@ -1,79 +1,75 @@
 ---
-title: MXC Per-Tool Policy Advisor
+title: MXC Per-Tool Sandbox Configuration
 authors:
   - Chaz Gordish
 created: 2026-07-21
-last_updated: 2026-07-22
+last_updated: 2026-07-29
 status: draft
 issue:
 rfc_pr:
 ---
 
-# Proposal: MXC Per-Tool Policy Advisor
+# Proposal: MXC Per-Tool Sandbox Configuration
 
 ## Summary
 
-Add an MXC-owned policy advisor that evaluates individual OpenClaw tool calls
-before execution. Policies can match a specific tool and argument set or all
-calls to a tool, allow or deny the call, and provide a containment envelope for
-MXC-backed execution. Policy state is stored in OpenClaw's SQLite state
-database, unmatched calls remain allowed for compatibility, and policy
-evaluation failures block the affected call. Every MXC-backed call receives a
-built-in MXC baseline, and matching per-tool policies can add the access needed
-by that tool or impose additional restrictions.
+Add an MXC-owned configuration advisor that selects a sandbox configuration for
+each OpenClaw tool call before execution. Configurations can match a specific
+tool and argument set or all calls to a tool and provide a containment envelope
+for MXC-backed execution.
+
+Configuration state is stored in OpenClaw's SQLite state database and is
+managed by the user through the OpenClaw CLI. Unmatched calls continue using
+the existing MXC sandbox configuration for compatibility. If MXC cannot create
+a sandbox with the selected per-tool configuration, the tool call fails.
 
 ## Motivation
 
-OpenClaw currently applies MXC policy through sandbox backend configuration.
-The built-in MXC baseline provides common execution access, but does not provide
-a policy-store decision for each tool call. Different tools, or different calls
-to the same tool, can require different filesystem, network, capability, and
-timeout access.
+OpenClaw currently applies one MXC sandbox backend configuration broadly.
+Different tools, or different calls to the same tool, can require different
+filesystem, network, capability, and timeout access.
 
 For example, an `exec` call that reads repository status should not
 automatically receive the same containment grants as an `exec` call that builds
-the repository or modifies files. A per-tool policy decision allows OpenClaw to
-apply the smallest intended access for the individual call.
+the repository or modifies files. Per-tool sandbox configuration allows
+OpenClaw to request the intended access for the individual call.
 
-The policy decision also needs to remain close to the component that applies
-the resulting containment. The MXC plugin already owns MXC backend integration,
-while OpenClaw owns tool identity, plugin approvals, agent sessions, and
-persistent application state. Keeping the policy advisor in the OpenClaw MXC
-plugin provides one ownership boundary for local policy evaluation and MXC
-enforcement without introducing a generic core policy framework before another
-backend requires one.
+The configuration decision also needs to remain close to the component that
+applies the resulting containment. The MXC plugin already owns MXC backend
+integration, while OpenClaw owns tool identity, agent sessions, and persistent
+application state. Keeping the configuration advisor in the OpenClaw MXC
+plugin provides one ownership boundary for local configuration and MXC
+enforcement.
 
-The initial behavior should remain permissive when no policy exists. Enabling
-the policy advisor must not unexpectedly stop existing tool workflows. A
-matching policy can narrow or deny behavior, while a missing policy allows the
-call without prompting or creating a new rule.
+The initial behavior should remain compatible when no per-tool configuration
+exists. Enabling the configuration advisor must not unexpectedly stop existing
+tool workflows.
 
 ## Goals
 
-- Evaluate tool calls against local policy before execution.
-- Keep policy evaluation and MXC enforcement in the OpenClaw MXC plugin.
-- Support exact and per-tool wildcard policy matching.
-- Allow calls with no matching policy to preserve existing behavior.
-- Allow settled policies to proceed without prompting.
-- Prompt for an operator decision when a matching policy is still in
-  development.
-- Persist mutable policy state in OpenClaw's SQLite state database.
-- Prevent MXC-backed tool execution from directly modifying policy state.
+- Select a sandbox configuration for each OpenClaw tool call.
+- Keep configuration selection and MXC enforcement in the OpenClaw MXC plugin.
+- Support exact and per-tool wildcard configuration matching.
+- Allow calls with no matching configuration to preserve existing behavior.
+- Persist mutable configuration state in OpenClaw's SQLite state database.
+- Prevent MXC-backed tool execution from directly modifying configuration
+  state.
 - Combine the built-in MXC baseline with tool-specific grants and restrictions.
-- Validate policy authorization again at the MXC execution boundary.
+- Validate configuration authorization again at the MXC execution boundary.
+- Fail the tool call when MXC cannot create the requested sandbox.
 - Record metadata-only audit events without storing raw tool arguments.
-- Provide CLI commands for policy inspection and management.
+- Provide CLI commands for configuration inspection and management.
 
 ## Non-Goals
 
-- Add a generic OpenClaw core policy engine.
-- Add a public Plugin SDK policy-provider contract.
-- Define enterprise policy distribution, integrity, precedence, or rollback.
+- Add a generic OpenClaw core configuration engine.
+- Add a public Plugin SDK configuration-provider contract.
+- Define built-in default configurations for individual tools.
+- Configure or synchronize Windows Node sandbox settings.
 - Enforce MXC containment fields for every non-`exec` tool in the first
   increment.
-- Add plugin approval support to every OpenClaw client.
-- Migrate policies from another policy system.
-- Define a cross-backend policy format.
+- Define the final user experience after sandbox creation fails.
+- Define a cross-backend sandbox configuration format.
 
 ## Proposal
 
@@ -86,33 +82,29 @@ final argument object that would proceed to execution.
 The MXC plugin owns:
 
 - Argument canonicalization and hashing.
-- Policy lookup and lifecycle.
-- Operator approval requests.
-- Policy audit events.
+- Configuration lookup.
+- Configuration audit events.
 - Authorization metadata passed to MXC-backed execution.
-- Composition of the selected tool policy with the built-in MXC baseline.
-- CLI commands used to inspect and manage policies.
+- Composition of the selected tool configuration with the built-in MXC
+  baseline.
+- CLI commands used to inspect and manage configurations.
 
-OpenClaw core continues to own generic hook execution, approval transport,
-agent sessions, tool execution, and plugin state infrastructure.
+OpenClaw core continues to own generic hook execution, agent sessions, tool
+execution, and plugin state infrastructure.
 
-### Decision model
+### Configuration model
 
-Each tool call resolves to one of three policy states:
+Each tool call resolves to one of two configuration states:
 
-| Policy state | Behavior |
+| Configuration state | Behavior |
 |---|---|
-| No matching policy | Allow the call without prompting or creating a policy |
-| Settled exact or wildcard policy | Apply its allow or deny decision immediately |
-| Matching in-development policy | Request `allow-once`, `allow-always`, or `deny` |
+| No matching configuration | Use the existing MXC sandbox configuration |
+| Exact or wildcard configuration | Apply the selected per-tool containment envelope |
 
-Settled deny policies provide a persistent way to block a specific tool call or
-all calls to a tool.
-
-Policy-store read or parse failures are different from a missing policy. A
-missing policy is the permissive compatibility case. A policy evaluation error
-blocks the call because OpenClaw cannot determine whether a configured
-restriction should apply.
+Configuration-store read or parse failures are different from a missing
+configuration. A missing configuration is the compatibility case. A
+configuration evaluation error blocks the call because OpenClaw cannot
+determine the requested sandbox.
 
 The proposed flow is:
 
@@ -121,43 +113,27 @@ flowchart TD
     A[Agent requests a tool call] --> B[Ordinary tool rewrite hooks]
     B --> C[MXC before_tool_call hook]
     C --> D[Canonicalize arguments and compute hash]
-    D --> E[(OpenClaw SQLite policy store)]
+    D --> E[(OpenClaw SQLite configuration store)]
     E --> F{Exact or wildcard match?}
 
-    F -->|No match| G[Allow with no tool-specific policy]
-    F -->|Settled match| H{Policy decision}
-    H -->|Deny| I[Block tool call]
-    H -->|Allow| J[Attach MXC policy metadata]
+    F -->|No match| G[Use existing MXC sandbox configuration]
+    F -->|Match| H[Attach per-tool sandbox configuration]
 
-    F -->|Development rule| K{Operator decision}
-    K -->|Deny| I
-    K -->|Allow once| L[Keep rule in development]
-    K -->|Allow always| M[Settle matched rule]
-    L --> J
-    M --> J
-
-    J --> N{MXC-backed exec?}
-    N -->|Yes| O[Validate identity and command correlation]
-    O --> P[Compose tool policy with MXC baseline]
-    P --> Q[Enforce paths, network, capabilities, and timeout]
-    Q --> R[Execute through MXC]
-    N -->|No| S[Admission decision only]
-
-    G --> T[Continue with existing tool behavior]
-    I --> U[Write metadata-only audit event]
-    R --> U
-    S --> U
-    T --> U
+    G --> I[Validate request and create MXC sandbox]
+    H --> I
+    I --> J{Sandbox created?}
+    J -->|No| K[Fail tool call]
+    J -->|Yes| L[Execute through MXC]
 ```
 
-**Figure 1.** The MXC hook evaluates the final tool arguments. Missing policies
-remain permissive, while matching policies can allow, deny, or request an
-operator decision. MXC-backed `exec` calls receive containment enforcement.
+**Figure 1.** The MXC hook selects the sandbox configuration for the final tool
+arguments. MXC-backed execution fails if the requested sandbox cannot be
+created.
 
-### Policy matching
+### Configuration matching
 
-The policy advisor canonicalizes the final tool arguments and computes a stable
-SHA-256 hash.
+The configuration advisor canonicalizes the final tool arguments and computes
+a stable SHA-256 hash.
 
 Canonicalization follows these rules:
 
@@ -165,42 +141,18 @@ Canonicalization follows these rules:
 - Array order remains significant.
 - Scalar values retain their type and value.
 
-The advisor checks policies in this order:
+The advisor checks configurations in this order:
 
 1. Exact tool name and canonical argument hash.
-2. Wildcard policy for the tool.
+2. Wildcard configuration for the tool.
 3. No match.
 
-An exact policy always takes precedence over a wildcard policy. A wildcard
-policy uses the tool name with an empty argument hash.
+An exact configuration always takes precedence over a wildcard configuration.
+A wildcard configuration uses the tool name with an empty argument hash.
 
-### Policy lifecycle
+### Sandbox configuration envelope
 
-Policies have two lifecycle states:
-
-- `development`: The policy requires an operator decision before reuse.
-- `settled`: The policy's allow or deny decision can be applied immediately.
-
-Approval decisions have the following behavior:
-
-| Decision | Current call | Policy result |
-|---|---|---|
-| `allow-once` | Allowed | Matching policy remains in development |
-| `allow-always` | Allowed | Matching exact or wildcard policy becomes settled allow |
-| `deny` | Blocked | Matching policy remains unchanged |
-| Timeout or cancellation | Blocked | Matching policy remains unchanged |
-
-An unmatched call does not enter this approval flow. Operators create or import
-a development policy when they want a tool or argument pattern to require
-review.
-
-Automatic settlement may be enabled as an explicit opt-in. It applies only to
-an existing in-development policy and does not create policies for unmatched
-calls.
-
-### Policy envelope
-
-An allow policy can provide an MXC execution envelope with:
+A per-tool configuration can provide an MXC execution envelope with:
 
 - Process timeout.
 - Network posture.
@@ -210,112 +162,130 @@ An allow policy can provide an MXC execution envelope with:
 - Read-only filesystem paths.
 - Read-write filesystem paths.
 
-The effective MXC policy combines the built-in MXC baseline with the selected
-per-tool envelope. The baseline provides access common to all MXC-backed calls.
-A per-tool policy can add filesystem paths or capabilities required by that
-tool, while also applying tool-specific restrictions. Explicit denies and
-platform safety constraints take precedence over grants.
+The effective MXC configuration combines the built-in MXC baseline with the
+selected per-tool envelope. The baseline provides access common to all
+MXC-backed calls. A per-tool configuration can add filesystem paths or
+capabilities required by that tool while also applying tool-specific
+restrictions.
 
 Composition follows these principles:
 
 - Deny is more restrictive than read-only.
 - Read-only is more restrictive than read-write.
 - A narrower path rule takes precedence when parent and child paths overlap.
-- Per-tool policies can add read-only paths, read-write paths, and capabilities.
-- Per-tool policies can narrow network access.
+- Per-tool configurations can add read-only paths, read-write paths, and
+  capabilities.
+- Per-tool configurations can narrow network access.
 - The lower timeout wins.
-- Platform safety constraints cannot be overridden by a per-tool policy.
 
 Paths must be normalized for Windows and POSIX separators, case behavior, and
 parent-child relationships before overlap is evaluated.
 
 ### Enforcement boundary
 
-For an allowed policy match, the hook attaches versioned
-`executionMetadata.mxcPolicy` containing:
+For a matching configuration, the hook attaches versioned
+`executionMetadata.mxcSandbox` containing:
 
 - Authorized tool name.
 - Canonical argument hash.
 - Original `exec` command when applicable.
-- Selected MXC execution envelope.
+- Selected MXC sandbox configuration.
 
 The MXC backend validates this metadata before applying it. For `exec`, the
 backend confirms that the command reaching sandbox execution is the command
 authorized by the hook.
 
-Missing, malformed, or mismatched authorization metadata blocks policy-governed
-MXC execution. This second validation prevents a rewritten or substituted
-command from consuming authorization intended for another call.
+Missing, malformed, or mismatched authorization metadata blocks
+configuration-governed MXC execution. This second validation prevents a
+rewritten or substituted command from consuming configuration intended for
+another call.
+
+### Separate sandbox modes
+
+The MXC plugin and Windows Node are separate sandbox modes for purposes of this
+RFC.
+
+Per-tool sandbox configurations apply only to commands executed through the
+OpenClaw MXC plugin. Windows Node continues to use its own sandbox settings.
+The MXC plugin does not read, compose with, or modify Windows Node settings,
+and Windows Node does not read, compose with, or modify MXC plugin per-tool
+configurations.
+
+### Sandbox creation failure
+
+MXC may be unable to create a sandbox with the selected per-tool
+configuration. When this occurs:
+
+- The tool call fails.
+- OpenClaw reports that the requested sandbox could not be created.
+- OpenClaw does not retry the command without MXC containment.
+
+The longer-term user experience and any remediation flow require product
+decisions and are outside this RFC.
 
 ### Initial enforcement scope
 
-The hook evaluates all tools while local MXC policy is enabled. This provides a
-consistent allow or deny decision point across the tool surface.
+The hook can select configuration for all tools while local MXC per-tool
+configuration is enabled.
 
-Containment fields affect only execution paths that consume MXC policy
-metadata. MXC-backed `exec` is the first supported enforcement path. A
-non-`exec` tool can be allowed or denied, but filesystem, network, capability,
-and timeout fields do not change that tool's runtime behavior in the first
-increment.
+Containment fields affect only execution paths that consume MXC configuration
+metadata. MXC-backed `exec` is the first supported enforcement path. Other
+tools can participate once they expose an MXC enforcement seam.
 
-### Policy storage
+Calls executed through Windows Node are outside this configuration path and use
+the separate Windows Node sandbox mode.
 
-Policies are mutable OpenClaw runtime state and are stored in the shared
+### Configuration storage
+
+Configurations are mutable OpenClaw runtime state and are stored in the shared
 OpenClaw state database:
 
 ```text
 state/openclaw.sqlite
 ```
 
-The MXC plugin uses the plugin-state API with a dedicated `tool-policies`
-namespace. Each rule records:
+The MXC plugin uses the plugin-state API with a dedicated
+`sandbox-configurations` namespace. Each entry records:
 
 - Tool name.
 - Exact argument hash or wildcard marker.
 - Value-free argument-shape summary.
-- Allow or deny decision.
 - MXC execution envelope.
-- Lifecycle state.
 - Usage count.
 - Creation and last-used timestamps.
 - Creation source.
 
-The initial design does not impose an application-level policy count limit.
-Unmatched calls do not create policy state, so store growth is driven by
-operator-created and imported rules. Operators manage policy state through
-supported CLI commands rather than editing SQLite directly.
-MXC containment must not grant tool execution write access to the OpenClaw state
-directory. OpenClaw and trusted plugin code retain runtime access for policy
-lifecycle and usage updates, while operators manage policies through supported
-management surfaces. Unsandboxed or elevated host execution remains governed by
-its existing host access and approval policy.
+The initial design does not impose an application-level configuration count
+limit. Unmatched calls do not create configuration state, so store growth is
+driven by user-created and imported entries. Users manage configuration state
+through supported CLI commands rather than editing SQLite directly.
 
-### Policy management
+MXC containment must not grant tool execution write access to the OpenClaw
+state directory. OpenClaw and trusted plugin code retain runtime access for
+configuration and usage updates.
+
+### Configuration management
 
 The MXC plugin provides:
 
 ```text
-openclaw mxc policy list
-openclaw mxc policy show <toolName>
-openclaw mxc policy edit <toolName>
-openclaw mxc policy settle <toolName>
-openclaw mxc policy remove <toolName>
+openclaw mxc sandbox list
+openclaw mxc sandbox show <toolName>
+openclaw mxc sandbox edit <toolName>
+openclaw mxc sandbox remove <toolName>
 ```
 
-The CLI must support exact and wildcard policies without requiring direct
-database access. A future export command can provide a reviewable or portable
-representation if operational requirements justify one.
+The CLI must support exact and wildcard configurations without requiring
+direct database access. A future export command can provide a reviewable or
+portable representation if operational requirements justify one.
 
 ### Configuration
 
-The proposed configuration is owned by `plugins.entries.mxc.config`:
+The proposed plugin configuration is owned by `plugins.entries.mxc.config`:
 
 | Field | Default | Purpose |
 |---|---:|---|
-| `localPolicyEnabled` | `true` | Evaluate tool calls against the MXC local policy store |
-| `localPolicyAutoApprove` | `false` | Settle an existing development policy without prompting |
-| `approvalTimeoutMs` | `1800000` | Set the plugin approval timeout |
-| `approvalSeverity` | `warning` | Set the approval prompt severity |
+| `perToolSandboxEnabled` | `true` | Select per-tool MXC sandbox configurations |
 | `auditLogPath` | State log directory | Override the JSONL audit path |
 
 MXC-backed execution continues to require the MXC sandbox backend:
@@ -333,25 +303,12 @@ MXC-backed execution continues to require the MXC sandbox backend:
 }
 ```
 
-### Approval clients
-
-Policy prompts use OpenClaw's generic plugin approval path. An approval-capable
-client can resolve:
-
-- Allow once.
-- Allow always.
-- Deny.
-
-Clients that do not implement plugin approvals cannot resolve an
-in-development policy prompt. The first implementation must document which
-clients support the flow and the timeout behavior for unsupported clients.
-
 ### Audit
 
 The default audit path is:
 
 ```text
-<state-dir>/logs/mxc-policy.jsonl
+<state-dir>/logs/mxc-sandbox.jsonl
 ```
 
 Audit events include:
@@ -359,90 +316,87 @@ Audit events include:
 - Event type.
 - Tool name.
 - Argument hash.
-- Session, run, and tool-call identifiers.
-- Decision and decision source.
-- Approval resolution.
+- Configuration match source.
+- Session, run, tool-call, and request identifiers.
+- Requested access summary.
+- Sandbox creation result.
 - Duration and success state.
 
-Audit events do not include raw tool arguments, command text, or error text.
-Audit writes are serialized and best-effort so an audit failure does not report
-a false tool execution failure.
+Audit events do not include raw tool arguments, command text, secrets, or error
+text. Audit writes are serialized and best-effort so an audit failure does not
+report a false tool execution failure.
 
 ### Security and correctness invariants
 
-1. Policy lookup occurs before tool execution.
-2. No matching policy allows the call without creating a rule.
-3. Policy-store read and parse errors block the call.
-4. Exact policies take precedence over wildcard policies.
-5. Settled policies can proceed without prompting.
-6. Automatic settlement remains opt-in.
-7. Per-tool grants compose with the built-in MXC baseline, while explicit
-   denies and platform safety constraints remain authoritative.
-8. The backend validates authorization metadata independently.
-9. MXC-backed `exec` validates command correlation before launch.
-10. MXC containment does not grant tool execution write access to runtime policy
-    state. Trusted OpenClaw runtime and operator management paths retain access.
-11. Audit events do not persist raw tool payloads or error text.
+1. Configuration lookup occurs before tool execution.
+2. No matching configuration uses the existing MXC sandbox configuration
+   without creating an entry.
+3. Configuration-store read and parse errors block the call.
+4. Exact configurations take precedence over wildcard configurations.
+5. The execution adapter validates authorization metadata independently.
+6. MXC-backed `exec` validates command correlation before launch.
+7. MXC plugin configurations and Windows Node sandbox settings do not influence
+   one another.
+8. Sandbox creation failure blocks execution and never triggers uncontained
+   host fallback.
+9. MXC containment does not grant tool execution write access to runtime
+    configuration state.
+10. Audit events do not persist raw tool payloads, command text, secrets, or
+    error text.
 
 ## Rationale
 
-### Store policies in SQLite instead of JSON
+### Store configurations in SQLite instead of JSON
 
 | Option | Advantages | Disadvantages |
 |---|---|---|
-| SQLite through the OpenClaw plugin-state API | Uses OpenClaw's canonical runtime state store; supports atomic updates and concurrent access; avoids another policy-file lifecycle; makes matching, counters, and lifecycle transitions straightforward; keeps runtime state out of an agent-visible sidecar | Harder for operators to inspect or edit directly; requires CLI or UI management; export, backup, and migration behavior must be deliberate; debugging is less convenient than opening a text file |
-| JSON policy file | Human-readable; easy to copy, diff, review, and hand-author; simple for static deployment and early prototypes | Requires locking and atomic-write handling; creates another state and migration surface; direct edits can race with runtime updates; counters and lifecycle transitions become awkward; permissions and placement must prevent agent modification |
+| SQLite through the OpenClaw plugin-state API | Uses OpenClaw's canonical runtime state store; supports atomic updates and concurrent access; makes matching and usage tracking straightforward | Requires CLI or UI management; export, backup, and migration behavior must be deliberate |
+| JSON configuration file | Human-readable; easy to copy, diff, review, and hand-author | Requires locking and atomic-write handling; creates another state and migration surface; direct edits can race with runtime updates |
 
-SQLite is preferred because these policies are mutable runtime state rather than
-a static deployment artifact. Operator visibility should come from supported
-CLI and export surfaces instead of direct database editing.
+SQLite is preferred because these configurations are mutable runtime state.
+User visibility and control come from supported CLI and export surfaces instead
+of direct database editing.
 
-### Keep policy evaluation in the OpenClaw MXC plugin
+### Keep configuration selection in the OpenClaw MXC plugin
 
-Moving the policy advisor into MXC itself would place OpenClaw tool identity,
-approval behavior, and application state in a lower-level containment
-component. A separate package would add distribution and versioning complexity
-before another consumer exists.
+Moving the configuration advisor into MXC itself would place OpenClaw tool
+identity and application state in a lower-level containment component. A
+separate package would add distribution and versioning complexity before
+another consumer exists.
 
 The OpenClaw MXC plugin is the narrowest owner that has access to both the
-OpenClaw policy context and the MXC enforcement boundary.
+OpenClaw tool context and the MXC enforcement boundary.
 
-### Do not add a generic core policy engine
+### Do not add a generic core configuration engine
 
-A generic policy-provider framework would define a public cross-plugin contract
-before requirements for other sandbox backends are understood. The plugin-owned
-design can later inform a shared contract if a second backend demonstrates the
-same need.
+A generic configuration-provider framework would define a public cross-plugin
+contract before requirements for other sandbox backends are understood. The
+plugin-owned design can later inform a shared contract if a second backend
+demonstrates the same need.
 
-### Use exact and wildcard policies
+### Use exact and wildcard configurations
 
-Exact policies support argument-specific decisions and containment. Wildcard
-policies provide a manageable fallback for tools whose calls should share one
-decision. Exact-first matching allows an operator to define exceptions without
-changing the broader wildcard rule.
+Exact configurations support argument-specific sandbox choices. Wildcard
+configurations provide a manageable fallback for tools whose calls should
+share one configuration. Exact-first matching allows a user to define a
+specific exception without changing the broader wildcard configuration.
 
-### Allow unmatched calls
+### Preserve compatibility for unmatched calls
 
-Failing closed for every unmatched call would turn the policy advisor into a
-mandatory allowlist and could block existing installations as soon as the
-feature is enabled. Allowing unmatched calls makes local policy additive:
-operators can introduce restrictions intentionally without first inventorying
-every tool and argument shape.
+Failing closed for every unmatched call could block existing installations as
+soon as the feature is enabled.
 
-Policy errors still fail closed because an error may prevent OpenClaw from
-applying a configured restriction.
+An unmatched call therefore uses the existing MXC sandbox configuration.
+Configuration read failures, authorization mismatches, and sandbox creation
+failures still block the affected call.
 
 ## Unresolved questions
 
-- Should plugin approval support be required in every interactive OpenClaw
-  client before in-development policies are enabled by default?
-- Should non-`exec` tools receive admission control before they have an MXC
-  containment enforcement seam?
-- What export, backup, and restore operations are required for SQLite policy
-  state?
-- Should policy creation remain CLI-driven, or should a future learning mode
-  propose development policies without blocking unmatched calls?
-- What is the correct precedence when an implicitly allowed workspace or
-  runtime path overlaps an explicit denied path?
+- Should exact configurations be keyed by the complete canonical argument hash,
+  a value-free argument shape, or a more stable tool-defined identity?
+- What is the correct precedence when an implicitly available workspace or
+  runtime path overlaps an explicitly denied path?
 - Which filesystem overlap cases must be proven across Windows and POSIX path
   semantics before denied-path enforcement is considered complete?
+- What information should OpenClaw show when MXC cannot create the requested
+  sandbox?
