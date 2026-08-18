@@ -3,10 +3,10 @@ title: MXC Per-Tool Sandbox Configuration
 authors:
   - Chaz Gordish
 created: 2026-07-21
-last_updated: 2026-07-29
+last_updated: 2026-08-18
 status: draft
 issue:
-rfc_pr:
+rfc_pr: https://github.com/ChazGo/rfcs/pull/1
 ---
 
 # Proposal: MXC Per-Tool Sandbox Configuration
@@ -15,13 +15,20 @@ rfc_pr:
 
 Add an MXC-owned configuration advisor that selects a sandbox configuration for
 each OpenClaw tool call before execution. Configurations can match a specific
-tool and argument set or all calls to a tool and provide a containment envelope
-for MXC-backed execution.
+tool and argument set or all calls to a tool.
+
+The stored value is a fragment of MXC `ContainerConfig`. It is composed with
+the existing shared MXC baseline configuration and the invoking agent's
+resolved sandbox settings. A per-tool configuration may only restrict the
+access those existing settings permit.
 
 Configuration state is stored in OpenClaw's SQLite state database and is
-managed by the user through the OpenClaw CLI. Unmatched calls continue using
-the existing MXC sandbox configuration for compatibility. If MXC cannot create
-a sandbox with the selected per-tool configuration, the tool call fails.
+managed by the user through supported OpenClaw surfaces. MXC denial capture can
+identify access blocked by a per-tool configuration. OpenClaw can then offer
+`Deny`, `Allow once`, or `Always allow`. The sandboxed tool process that
+encountered the denial has already exited, so approval starts a new execution
+with the approved configuration. A separate permissive auditing flow can
+observe allowed access and propose a configuration for review.
 
 ## Motivation
 
@@ -51,25 +58,30 @@ tool workflows.
 - Keep configuration selection and MXC enforcement in the OpenClaw MXC plugin.
 - Support exact and per-tool wildcard configuration matching.
 - Allow calls with no matching configuration to preserve existing behavior.
-- Persist mutable configuration state in OpenClaw's SQLite state database.
-- Prevent MXC-backed tool execution from directly modifying configuration
-  state.
-- Combine the built-in MXC baseline with tool-specific grants and restrictions.
+- Persist mutable per-tool sandbox configurations in OpenClaw's SQLite state
+  database.
+- Prevent sandboxed tool processes from writing the SQLite entries that store
+  per-tool sandbox configurations.
+- Compose the shared MXC baseline, resolved per-agent sandbox settings, and
+  tool-specific restrictions.
 - Validate configuration authorization again at the MXC execution boundary.
 - Fail the tool call when MXC cannot create the requested sandbox.
+- Support MXC block-mode approval and permissive allow-mode auditing.
 - Record metadata-only audit events without storing raw tool arguments.
 - Provide CLI commands for configuration inspection and management.
 
 ## Non-Goals
 
+- Change the existing per-agent sandbox settings.
+- Change the shared MXC baseline configuration.
 - Add a generic OpenClaw core configuration engine.
 - Add a public Plugin SDK configuration-provider contract.
 - Define built-in default configurations for individual tools.
-- Configure or synchronize Windows Node sandbox settings.
-- Enforce MXC containment fields for every non-`exec` tool in the first
+- Implement Windows Node per-tool configuration in the first increment.
+- Change non-`exec` tools to execute their work through MXC in the first
   increment.
-- Define the final user experience after sandbox creation fails.
 - Define a cross-backend sandbox configuration format.
+- Persist MXC ETL, raw denial logs, observations, or learning sessions.
 
 ## Proposal
 
@@ -85,12 +97,14 @@ The MXC plugin owns:
 - Configuration lookup.
 - Configuration audit events.
 - Authorization metadata passed to MXC-backed execution.
-- Composition of the selected tool configuration with the built-in MXC
-  baseline.
+- Composition of the selected tool configuration with the shared MXC baseline
+  and resolved per-agent sandbox settings.
+- Validation of MXC denial results before a configuration is retried or stored.
 - CLI commands used to inspect and manage configurations.
 
 OpenClaw core continues to own generic hook execution, agent sessions, tool
-execution, and plugin state infrastructure.
+execution, approval presentation, and plugin state infrastructure. MXC owns
+denial capture, decoding, de-duplication, output limits, and platform support.
 
 ### Configuration model
 
@@ -98,8 +112,8 @@ Each tool call resolves to one of two configuration states:
 
 | Configuration state | Behavior |
 |---|---|
-| No matching configuration | Use the existing MXC sandbox configuration |
-| Exact or wildcard configuration | Apply the selected per-tool containment envelope |
+| No matching configuration | Use the existing MXC baseline and resolved per-agent sandbox settings |
+| Exact or wildcard configuration | Further restrict the existing configuration |
 
 Configuration-store read or parse failures are different from a missing
 configuration. A missing configuration is the compatibility case. A
@@ -116,7 +130,7 @@ flowchart TD
     D --> E[(OpenClaw SQLite configuration store)]
     E --> F{Exact or wildcard match?}
 
-    F -->|No match| G[Use existing MXC sandbox configuration]
+    F -->|No match| G[Use existing MXC baseline configuration]
     F -->|Match| H[Attach per-tool sandbox configuration]
 
     G --> I[Validate request and create MXC sandbox]
@@ -148,38 +162,78 @@ The advisor checks configurations in this order:
 3. No match.
 
 An exact configuration always takes precedence over a wildcard configuration.
-A wildcard configuration uses the tool name with an empty argument hash.
+A wildcard configuration uses the tool name with an empty argument hash and
+applies to all argument sets for that tool. Configurations are shared across
+agents but are composed with the invoking agent's resolved sandbox settings.
 
-### Sandbox configuration envelope
+### Sandbox configuration fragment
 
-A per-tool configuration can provide an MXC execution envelope with:
+A per-tool configuration stores the MXC fields that can vary by tool using the
+same names, nesting, and units as MXC `ContainerConfig`:
 
-- Process timeout.
-- Network posture.
-- Local-network posture.
-- Capabilities.
-- Denied filesystem paths.
-- Read-only filesystem paths.
-- Read-write filesystem paths.
+The following is a TypeScript type declaration, not runtime code that reads or
+extracts values from a `ContainerConfig`. `Pick` means the fragment accepts
+only the listed fields from that nested MXC configuration section.
+`NonNullable` lets TypeScript inspect an optional section before selecting its
+fields. Referencing the MXC SDK types keeps this fragment aligned with the
+upstream schema without redefining each field locally.
 
-The effective MXC configuration combines the built-in MXC baseline with the
-selected per-tool envelope. The baseline provides access common to all
-MXC-backed calls. A per-tool configuration can add filesystem paths or
-capabilities required by that tool while also applying tool-specific
-restrictions.
+```ts
+import type { ContainerConfig } from "@microsoft/mxc-sdk";
 
-Composition follows these principles:
+type MxcSandboxConfigurationFragment = {
+  process?: Pick<NonNullable<ContainerConfig["process"]>, "timeout">;
+  filesystem?: Pick<
+    NonNullable<ContainerConfig["filesystem"]>,
+    "deniedPaths" | "readonlyPaths" | "readwritePaths"
+  >;
+  network?: Pick<
+    NonNullable<ContainerConfig["network"]>,
+    | "defaultPolicy"
+    | "enforcementMode"
+    | "allowLocalNetwork"
+    | "allowedHosts"
+    | "blockedHosts"
+    | "proxy"
+  >;
+  ui?: ContainerConfig["ui"];
+  processContainer?: Pick<
+    NonNullable<ContainerConfig["processContainer"]>,
+    "capabilities" | "ui"
+  >;
+};
+```
 
-- Deny is more restrictive than read-only.
-- Read-only is more restrictive than read-write.
-- A narrower path rule takes precedence when parent and child paths overlap.
-- Per-tool configurations can add read-only paths, read-write paths, and
-  capabilities.
-- Per-tool configurations can narrow network access.
-- The lower timeout wins.
+The entry stores the selector, creation source, and MXC schema version outside
+the fragment. OpenClaw adds runtime-only fields when the tool executes:
 
-Paths must be normalized for Windows and POSIX separators, case behavior, and
-parent-child relationships before overlap is evaluated.
+- Command line, environment, and working directory.
+- Container identity and containment selection.
+- Lifecycle and cleanup settings.
+- Denial-capture controls.
+
+The fragment is not a complete runtime configuration and is not an additive
+patch. It may only restrict the shared MXC baseline and any corresponding
+per-agent sandbox setting:
+
+- Filesystem access can be downgraded or denied but cannot add a path or
+  stronger access.
+- Network, UI, and ProcessContainer capabilities can only be narrowed.
+- The shortest applicable timeout wins.
+- Mandatory protected-resource restrictions cannot be overridden.
+
+The per-agent and MXC schemas do not need to map one-to-one. OpenClaw applies a
+per-agent restriction where a corresponding setting exists and otherwise keeps
+the MXC baseline configuration. Invalid, widening, or unenforceable
+combinations fail closed.
+
+#### Adding new MXC fields
+
+The fragment can expand as MXC adds configuration fields. Each new field is
+added explicitly after OpenClaw defines how it composes with the baseline and
+per-agent settings. The entry's MXC schema version supports validation and
+migration of stored configurations. Unknown fields fail closed rather than
+becoming available automatically.
 
 ### Enforcement boundary
 
@@ -189,27 +243,37 @@ For a matching configuration, the hook attaches versioned
 - Authorized tool name.
 - Canonical argument hash.
 - Original `exec` command when applicable.
-- Selected MXC sandbox configuration.
+- Selected MXC sandbox configuration fragment.
 
 The MXC backend validates this metadata before applying it. For `exec`, the
 backend confirms that the command reaching sandbox execution is the command
 authorized by the hook.
 
-Missing, malformed, or mismatched authorization metadata blocks
+The backend builds the complete runtime `ContainerConfig` from the existing
+configuration, selected fragment, and invocation fields. The complete
+configuration is serialized for the MXC launcher; the fragment is not passed
+as separate command-line switches.
+
+Missing, malformed, mismatched, or widening authorization metadata blocks
 configuration-governed MXC execution. This second validation prevents a
 rewritten or substituted command from consuming configuration intended for
 another call.
 
 ### Separate sandbox modes
 
-The MXC plugin and Windows Node are separate sandbox modes for purposes of this
-RFC.
+This RFC defines the first implementation for Gateway-local execution through
+the OpenClaw MXC plugin. Windows Node can adopt the same per-tool configuration
+matching and Learning Mode workflow for commands it executes.
 
-Per-tool sandbox configurations apply only to commands executed through the
-OpenClaw MXC plugin. Windows Node continues to use its own sandbox settings.
-The MXC plugin does not read, compose with, or modify Windows Node settings,
-and Windows Node does not read, compose with, or modify MXC plugin per-tool
-configurations.
+The two sandbox modes keep separate configuration state and enforcement.
+Gateway-local configurations apply only to Gateway-local execution. Windows
+Node configurations apply only to execution on that node. Neither mode reads,
+composes with, or modifies the other's sandbox configurations.
+
+This separation is required because the Gateway and Windows Node can run on
+different devices with different filesystems, available capabilities, and
+baseline configurations. A configuration approved for one execution
+environment must not be treated as valid for the other.
 
 ### Sandbox creation failure
 
@@ -220,20 +284,75 @@ configuration. When this occurs:
 - OpenClaw reports that the requested sandbox could not be created.
 - OpenClaw does not retry the command without MXC containment.
 
-The longer-term user experience and any remediation flow require product
-decisions and are outside this RFC.
-
 ### Initial enforcement scope
 
-The hook can select configuration for all tools while local MXC per-tool
-configuration is enabled.
+MXC-backed `exec` is the first supported tool because its command is launched
+through the MXC backend. Tools that run inside the OpenClaw process or use
+another execution backend do not create an MXC sandbox, so there is no MXC
+sandbox configuration for them to apply.
 
-Containment fields affect only execution paths that consume MXC configuration
-metadata. MXC-backed `exec` is the first supported enforcement path. Other
-tools can participate once they expose an MXC enforcement seam.
+If another tool is later changed to execute work through MXC, it can use the
+same per-tool configuration matching and validation path.
 
-Calls executed through Windows Node are outside this configuration path and use
-the separate Windows Node sandbox mode.
+Calls executed through Windows Node use a separate node-local configuration
+path. Windows Node can implement the same matching and approval semantics
+without consuming the Gateway-local configuration entries defined here.
+
+### Learning Mode
+
+The proposed integration will support MXC's two application-driven
+`captureDenials` modes.
+
+#### App / user-configurable: block mode
+
+`captureDenials.mode: "block"` is MXC's enforced, deny-and-record flow.
+Containment remains enforced while denied access is recorded. After the process
+exits, MXC will return a structured `DenialsDocument`; it will not return an
+OpenClaw sandbox configuration.
+
+OpenClaw will validate that the result is complete and that each requested
+change is representable, does not expose a protected resource, and remains
+within the shared MXC baseline and resolved per-agent sandbox settings. It will
+then present:
+
+- **Deny:** do not rerun.
+- **Allow once:** rerun with an ephemeral exact configuration change.
+- **Always allow:** store the validated change for the exact configuration and
+  rerun.
+
+The sandboxed tool process that produced the denial has already exited.
+Approval cannot resume that process or retroactively allow its denied
+operation; OpenClaw starts a new tool execution. A denial that requires
+changing the shared baseline or per-agent settings is reported as a baseline
+configuration change instead of a per-tool change. OpenClaw will not persist
+the denial document, ETL, raw events, or a separate learning session.
+
+OpenClaw's current MXC Node SDK dependency does not expose the complete typed
+capture contract. Implementation requires typed `captureDenials` input,
+structured output metadata, a runtime support result, and a reliable
+completeness signal. Missing support, capture failure, or truncated output
+fails closed.
+
+OpenClaw must not remove an existing baseline protection to make capture start.
+If MXC cannot combine capture with the effective configuration on the current
+host, Learning Mode is unavailable for that call.
+
+#### Fleet auditing: allow mode
+
+`captureDenials.mode: "allow"` is MXC's relaxed, allow-all capture flow. Access
+checks that the sandbox would normally deny are allowed and recorded for the
+run. OpenClaw must present this as a reduced-containment auditing mode and
+require the user to start it explicitly.
+
+After the run, OpenClaw can use the structured records to propose a sandbox
+configuration for review. The proposed configuration must pass the same
+protected-resource, baseline, per-agent, completeness, and representability
+validation before it can be stored. The observed access never becomes active
+configuration automatically.
+
+Windows Node can adopt either capture flow when it exposes node-local denial
+capture. Its learned configurations remain local to that node's sandbox
+settings and filesystem.
 
 ### Configuration storage
 
@@ -250,19 +369,21 @@ The MXC plugin uses the plugin-state API with a dedicated
 - Tool name.
 - Exact argument hash or wildcard marker.
 - Value-free argument-shape summary.
-- MXC execution envelope.
+- MXC schema version.
+- MXC sandbox configuration fragment.
 - Usage count.
 - Creation and last-used timestamps.
-- Creation source.
+- Creation source, including `cli`, `imported`, or `learned`.
 
 The initial design does not impose an application-level configuration count
-limit. Unmatched calls do not create configuration state, so store growth is
-driven by user-created and imported entries. Users manage configuration state
-through supported CLI commands rather than editing SQLite directly.
+limit. Unmatched calls do not create configuration entries, so store growth is
+driven by user-created, imported, and learned entries. Users manage per-tool
+sandbox configurations through supported CLI commands rather than editing
+SQLite directly.
 
-MXC containment must not grant tool execution write access to the OpenClaw
-state directory. OpenClaw and trusted plugin code retain runtime access for
-configuration and usage updates.
+MXC containment must not grant sandboxed tool processes write access to the
+OpenClaw state directory containing `openclaw.sqlite`. OpenClaw and trusted
+plugin code retain runtime access for configuration and usage updates.
 
 ### Configuration management
 
@@ -276,8 +397,8 @@ openclaw mxc sandbox remove <toolName>
 ```
 
 The CLI must support exact and wildcard configurations without requiring
-direct database access. A future export command can provide a reviewable or
-portable representation if operational requirements justify one.
+direct database access. The approval surface uses the same validation and
+persistence path.
 
 ### Configuration
 
@@ -320,29 +441,39 @@ Audit events include:
 - Session, run, tool-call, and request identifiers.
 - Requested access summary.
 - Sandbox creation result.
+- Learning decision and rerun result.
 - Duration and success state.
 
-Audit events do not include raw tool arguments, command text, secrets, or error
-text. Audit writes are serialized and best-effort so an audit failure does not
-report a false tool execution failure.
+Audit events do not include raw tool arguments, command text, secrets, error
+text, denial documents, or ETL. Audit writes are serialized and best-effort so
+an audit failure does not report a false tool execution failure.
 
 ### Security and correctness invariants
 
 1. Configuration lookup occurs before tool execution.
-2. No matching configuration uses the existing MXC sandbox configuration
-   without creating an entry.
+2. No matching configuration uses the shared MXC baseline and resolved
+   per-agent sandbox settings without creating an entry.
 3. Configuration-store read and parse errors block the call.
 4. Exact configurations take precedence over wildcard configurations.
-5. The execution adapter validates authorization metadata independently.
-6. MXC-backed `exec` validates command correlation before launch.
-7. MXC plugin configurations and Windows Node sandbox settings do not influence
-   one another.
-8. Sandbox creation failure blocks execution and never triggers uncontained
-   host fallback.
-9. MXC containment does not grant tool execution write access to runtime
-    configuration state.
-10. Audit events do not persist raw tool payloads, command text, secrets, or
-    error text.
+5. Per-tool configurations cannot widen the shared baseline or corresponding
+   per-agent sandbox settings.
+6. The execution adapter validates authorization metadata independently.
+7. MXC-backed `exec` validates command correlation before launch.
+8. Learning approval happens after the denied tool process exits and starts a
+   new execution rather than resuming the original process.
+9. `Allow once` is ephemeral; only `Always allow` changes persistent state.
+10. Incomplete, protected, unrepresentable, or widening learning results cannot
+    become per-tool configuration changes.
+11. Allow-mode auditing requires explicit user initiation and never activates
+    observed access automatically.
+12. Gateway-local and Windows Node configurations remain separate; neither
+    configuration store influences execution in the other sandbox mode.
+13. Sandbox creation failure blocks execution and never triggers uncontained
+    host fallback.
+14. Sandboxed tool processes cannot write the SQLite entries that store
+    per-tool sandbox configurations.
+15. Audit events do not persist raw tool payloads, command text, secrets, error
+    text, denial documents, or ETL.
 
 ## Rationale
 
@@ -386,17 +517,22 @@ specific exception without changing the broader wildcard configuration.
 Failing closed for every unmatched call could block existing installations as
 soon as the feature is enabled.
 
-An unmatched call therefore uses the existing MXC sandbox configuration.
-Configuration read failures, authorization mismatches, and sandbox creation
-failures still block the affected call.
+An unmatched call therefore uses the existing shared MXC baseline and resolved
+per-agent sandbox settings. Configuration read failures, authorization
+mismatches, and sandbox creation failures still block the affected call.
+
+### Treat denial records as configuration evidence
+
+MXC reports the access that was denied. OpenClaw decides whether that evidence
+can safely change a per-tool sandbox configuration. Every approved change is
+validated against the existing baseline and per-agent settings before rerun or
+persistence.
 
 ## Unresolved questions
 
-- Should exact configurations be keyed by the complete canonical argument hash,
-  a value-free argument shape, or a more stable tool-defined identity?
-- What is the correct precedence when an implicitly available workspace or
-  runtime path overlaps an explicitly denied path?
-- Which filesystem overlap cases must be proven across Windows and POSIX path
-  semantics before denied-path enforcement is considered complete?
+- Which denial resource and access types can be converted safely into the
+  stored MXC sandbox configuration fragment?
+- Should approval operate on individual denials, a reviewed group, or both?
+- How should repeated denials update an existing exact configuration?
 - What information should OpenClaw show when MXC cannot create the requested
-  sandbox?
+  sandbox or a denial requires a baseline configuration change?
