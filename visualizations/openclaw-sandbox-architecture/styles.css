@@ -366,6 +366,17 @@ marker path {
   fill: #344765;
   font-size: 13px;
   font-weight: 750;
+  text-anchor: middle;
+}
+
+.flow-label-group {
+  pointer-events: none;
+}
+
+.flow-label-bg {
+  fill: var(--surface);
+  stroke: #9babc0;
+  stroke-width: 1.5;
 }
 
 .details-drawer {
