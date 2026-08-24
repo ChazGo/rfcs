@@ -1,0 +1,42 @@
+name: Deploy sandbox architecture visualization
+
+on:
+  push:
+    branches:
+      - visualization/openclaw-sandbox-architecture
+    paths:
+      - "visualizations/openclaw-sandbox-architecture/**"
+      - ".github/workflows/deploy-sandbox-architecture.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out visualization branch
+        uses: actions/checkout@v5
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload visualization
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: visualizations/openclaw-sandbox-architecture
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

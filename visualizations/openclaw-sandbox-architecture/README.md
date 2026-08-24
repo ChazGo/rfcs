@@ -1,0 +1,24 @@
+# OpenClaw sandbox architecture visualization
+
+This static site compares current public OpenClaw sandbox boundaries with the
+proposed Agent User Gateway architecture. It is intentionally separate from RFC
+0026 and is not part of that RFC's pull request.
+
+## Local preview
+
+From the repository root:
+
+```powershell
+python -m http.server 8000 --directory visualizations\openclaw-sandbox-architecture
+```
+
+Open `http://localhost:8000`.
+
+## Source rules
+
+- Current behavior must link to revision-pinned public source.
+- Proposed behavior must be labeled and link to its proposal revision.
+- Gateway and Windows-node policy examples remain host-specific.
+- Private or internal links must not be added.
+
+The site has no third-party runtime dependencies or build step.

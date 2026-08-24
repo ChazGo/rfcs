@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Interactive view of current and proposed OpenClaw sandbox boundaries on Windows."
+    />
+    <title>OpenClaw sandbox architecture</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#architecture">Skip to architecture</a>
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">OpenClaw architecture explorer</p>
+        <h1>Sandbox boundaries on Windows</h1>
+        <p class="lede">
+          Compare the current public execution model with the proposed nested
+          Agent User model. Select a boundary to inspect its identity, defaults,
+          focused schema, and source.
+        </p>
+      </div>
+      <div class="header-meta" aria-label="Diagram status">
+        <span class="status status-current">Current</span>
+        <span class="status status-proposed">Proposed</span>
+        <span class="status status-open">Open decision</span>
+      </div>
+    </header>
+
+    <main id="architecture">
+      <div class="toolbar">
+        <div class="view-tabs" role="tablist" aria-label="Architecture view">
+          <button
+            id="tab-current"
+            class="view-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="view-current"
+            data-view="current"
+          >
+            Current public architecture
+          </button>
+          <button
+            id="tab-target"
+            class="view-tab"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="view-target"
+            data-view="target"
+          >
+            Target nested architecture
+          </button>
+        </div>
+        <button id="reset-view" class="secondary-action" type="button">
+          Reset view
+        </button>
+      </div>
+
+      <section
+        id="view-current"
+        class="architecture-view"
+        role="tabpanel"
+        aria-labelledby="tab-current"
+        hidden
+      >
+        <div class="view-heading">
+          <div>
+            <p class="eyebrow">Current public source</p>
+            <h2>Separate Gateway and Windows-node enforcement</h2>
+          </div>
+          <p>
+            Execution target selection happens before path resolution. MXC is
+            opt-in on both hosts, and each host owns its own configuration.
+          </p>
+        </div>
+        <div class="diagram-shell">
+          <svg
+            class="architecture-diagram"
+            viewBox="0 0 1120 700"
+            role="group"
+            aria-labelledby="current-title current-description"
+          >
+            <title id="current-title">Current OpenClaw sandbox architecture</title>
+            <desc id="current-description">
+              A Gateway host and a signed-in Windows user session each contain
+              their own optional MXC ProcessContainer execution boundary.
+            </desc>
+            <defs>
+              <marker
+                id="arrow-current"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" />
+              </marker>
+            </defs>
+
+            <rect class="device-frame" x="20" y="20" width="1080" height="650" rx="28" />
+            <text class="frame-label" x="50" y="58">Windows device boundary</text>
+
+            <g
+              class="boundary boundary-host"
+              tabindex="0"
+              role="button"
+              data-detail-id="current-gateway"
+              aria-label="Inspect current Gateway host"
+            >
+              <rect x="55" y="90" width="500" height="535" rx="22" />
+              <text class="boundary-kicker" x="85" y="126">CURRENT HOST PROCESS</text>
+              <text class="boundary-title" x="85" y="157">Gateway host</text>
+              <text class="boundary-copy" x="85" y="184">Runs as the Gateway account</text>
+            </g>
+
+            <g
+              class="boundary boundary-process"
+              tabindex="0"
+              role="button"
+              data-detail-id="current-gateway-mxc"
+              aria-label="Inspect current Gateway MXC ProcessContainer"
+            >
+              <rect x="90" y="275" width="430" height="285" rx="20" />
+              <text class="boundary-kicker" x="120" y="313">OPT-IN, PER COMMAND</text>
+              <text class="boundary-title" x="120" y="346">MXC ProcessContainer</text>
+              <text class="boundary-copy" x="120" y="376">Gateway-local tool execution</text>
+              <text class="boundary-note" x="120" y="426">Workspace and paths resolve</text>
+              <text class="boundary-note" x="120" y="449">against the Gateway host identity.</text>
+              <rect class="status-pill current-pill" x="120" y="492" width="112" height="32" rx="16" />
+              <text class="status-pill-text" x="176" y="513">Current</text>
+            </g>
+
+            <g
+              class="boundary boundary-session"
+              tabindex="0"
+              role="button"
+              data-detail-id="current-windows-node"
+              aria-label="Inspect current Windows node session"
+            >
+              <rect x="590" y="90" width="475" height="535" rx="22" />
+              <text class="boundary-kicker" x="620" y="126">SIGNED-IN USER SESSION</text>
+              <text class="boundary-title" x="620" y="157">Windows node</text>
+              <text class="boundary-copy" x="620" y="184">Device-local command authority</text>
+            </g>
+
+            <g
+              class="boundary boundary-process"
+              tabindex="0"
+              role="button"
+              data-detail-id="current-node-mxc"
+              aria-label="Inspect current Windows node MXC ProcessContainer"
+            >
+              <rect x="625" y="275" width="405" height="285" rx="20" />
+              <text class="boundary-kicker" x="655" y="313">NODE-LOCAL, PER COMMAND</text>
+              <text class="boundary-title" x="655" y="346">MXC ProcessContainer</text>
+              <text class="boundary-copy" x="655" y="376">system.run execution</text>
+              <text class="boundary-note" x="655" y="426">Documents resolves for the account</text>
+              <text class="boundary-note" x="655" y="449">running the Windows node.</text>
+              <rect class="status-pill current-pill" x="655" y="492" width="112" height="32" rx="16" />
+              <text class="status-pill-text" x="711" y="513">Current</text>
+            </g>
+
+            <path
+              class="flow-line"
+              d="M 470 220 C 575 190, 600 190, 700 220"
+              marker-end="url(#arrow-current)"
+            />
+            <text class="flow-label" x="570" y="190">explicit node target</text>
+            <path
+              class="flow-line"
+              d="M 305 210 L 305 260"
+              marker-end="url(#arrow-current)"
+            />
+            <path
+              class="flow-line"
+              d="M 827 210 L 827 260"
+              marker-end="url(#arrow-current)"
+            />
+          </svg>
+        </div>
+      </section>
+
+      <section
+        id="view-target"
+        class="architecture-view"
+        role="tabpanel"
+        aria-labelledby="tab-target"
+      >
+        <div class="view-heading">
+          <div>
+            <p class="eyebrow">Proposed composition</p>
+            <h2>Agent User Gateway with nested tool containment</h2>
+          </div>
+          <p>
+            The outer session limits the Gateway identity. Each inner
+            ProcessContainer can narrow that identity's access but cannot expand it.
+          </p>
+        </div>
+        <div class="diagram-shell">
+          <svg
+            class="architecture-diagram"
+            viewBox="0 0 1120 700"
+            role="group"
+            aria-labelledby="target-title target-description"
+          >
+            <title id="target-title">Target nested OpenClaw sandbox architecture</title>
+            <desc id="target-description">
+              A signed-in user session contains the operator and Windows node.
+              A separate Agent User Isolation Session contains the Gateway. Both
+              execution hosts create their own nested MXC ProcessContainers.
+            </desc>
+            <defs>
+              <marker
+                id="arrow-target"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" />
+              </marker>
+            </defs>
+
+            <rect class="device-frame" x="20" y="20" width="1080" height="650" rx="28" />
+            <text class="frame-label" x="50" y="58">Windows device boundary</text>
+
+            <g
+              class="boundary boundary-session"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-user-session"
+              aria-label="Inspect signed-in user session"
+            >
+              <rect x="55" y="90" width="450" height="535" rx="22" />
+              <text class="boundary-kicker" x="85" y="126">SIGNED-IN USER SESSION</text>
+              <text class="boundary-title" x="85" y="157">User and Windows node</text>
+              <text class="boundary-copy" x="85" y="184">User files remain in this identity</text>
+            </g>
+
+            <g
+              class="boundary boundary-client"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-operator"
+              aria-label="Inspect operator client"
+            >
+              <rect x="90" y="220" width="165" height="105" rx="18" />
+              <text class="boundary-kicker" x="110" y="252">CLIENT</text>
+              <text class="boundary-title small-title" x="110" y="282">Operator UI</text>
+              <text class="boundary-copy" x="110" y="305">Consent surface</text>
+            </g>
+
+            <g
+              class="boundary boundary-host"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-windows-node"
+              aria-label="Inspect target Windows node"
+            >
+              <rect x="280" y="220" width="190" height="105" rx="18" />
+              <text class="boundary-kicker" x="300" y="252">NODE HOST</text>
+              <text class="boundary-title small-title" x="300" y="282">Windows node</text>
+              <text class="boundary-copy" x="300" y="305">Local authority</text>
+            </g>
+
+            <g
+              class="boundary boundary-process"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-node-mxc"
+              aria-label="Inspect target Windows node MXC ProcessContainer"
+            >
+              <rect x="90" y="375" width="380" height="195" rx="20" />
+              <text class="boundary-kicker" x="120" y="413">NESTED, PER COMMAND</text>
+              <text class="boundary-title" x="120" y="446">MXC ProcessContainer</text>
+              <text class="boundary-copy" x="120" y="476">Node-local configuration and paths</text>
+              <text class="boundary-note" x="120" y="518">Cannot exceed signed-in user access.</text>
+            </g>
+
+            <g
+              class="boundary boundary-agent-session"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-agent-session"
+              aria-label="Inspect proposed Agent User Isolation Session"
+            >
+              <rect x="540" y="90" width="525" height="535" rx="22" />
+              <text class="boundary-kicker" x="570" y="126">PROPOSED OUTER BOUNDARY</text>
+              <text class="boundary-title" x="570" y="157">Agent User Isolation Session</text>
+              <text class="boundary-copy" x="570" y="184">Gateway runs as a separate OS identity</text>
+              <rect class="status-pill proposed-pill" x="910" y="116" width="120" height="32" rx="16" />
+              <text class="status-pill-text" x="970" y="137">Proposed</text>
+            </g>
+
+            <g
+              class="boundary boundary-host"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-gateway"
+              aria-label="Inspect contained Gateway"
+            >
+              <rect x="580" y="220" width="445" height="105" rx="18" />
+              <text class="boundary-kicker" x="610" y="252">AGENT USER PROCESS</text>
+              <text class="boundary-title small-title" x="610" y="282">OpenClaw Gateway</text>
+              <text class="boundary-copy" x="610" y="305">Plugins, agent loop, and state</text>
+            </g>
+
+            <g
+              class="boundary boundary-process"
+              tabindex="0"
+              role="button"
+              data-detail-id="target-gateway-mxc"
+              aria-label="Inspect Gateway-local MXC ProcessContainer"
+            >
+              <rect x="580" y="375" width="445" height="195" rx="20" />
+              <text class="boundary-kicker" x="610" y="413">NESTED, PER TOOL CALL</text>
+              <text class="boundary-title" x="610" y="446">MXC ProcessContainer</text>
+              <text class="boundary-copy" x="610" y="476">Gateway-local per-tool configuration</text>
+              <text class="boundary-note" x="610" y="518">Cannot exceed Agent User access.</text>
+            </g>
+
+            <path
+              class="flow-line"
+              d="M 255 270 C 400 160, 520 160, 655 220"
+              marker-end="url(#arrow-target)"
+            />
+            <text class="flow-label" x="380" y="208">Gateway protocol</text>
+            <path
+              class="flow-line"
+              d="M 705 325 L 705 360"
+              marker-end="url(#arrow-target)"
+            />
+            <text class="flow-label" x="718" y="349">local tool call</text>
+            <path
+              class="flow-line"
+              d="M 800 325 C 685 350, 530 250, 470 270"
+              marker-end="url(#arrow-target)"
+            />
+            <text class="flow-label" x="532" y="270">explicit system.run target</text>
+            <path
+              class="flow-line"
+              d="M 375 325 L 375 360"
+              marker-end="url(#arrow-target)"
+            />
+          </svg>
+        </div>
+      </section>
+
+      <noscript>
+        <section class="noscript-summary">
+          <h2>Architecture summary</h2>
+          <p>
+            In the target architecture, an Agent User Isolation Session contains
+            the Gateway and its nested per-tool MXC ProcessContainers. The
+            signed-in user session separately contains the Windows node and its
+            node-local MXC ProcessContainers. Paths resolve on the selected
+            execution host before sandbox policy is applied.
+          </p>
+        </section>
+      </noscript>
+    </main>
+
+    <aside
+      id="details-drawer"
+      class="details-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="details-title"
+      aria-hidden="true"
+    >
+      <div class="drawer-header">
+        <div>
+          <p id="details-kicker" class="eyebrow"></p>
+          <h2 id="details-title">Boundary details</h2>
+        </div>
+        <button id="close-details" class="icon-action" type="button" aria-label="Close details">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div id="details-content" class="drawer-content"></div>
+    </aside>
+    <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+
+    <footer>
+      <p>
+        Current behavior is source-backed. Proposed behavior is labeled and
+        linked to its proposal revision.
+      </p>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
