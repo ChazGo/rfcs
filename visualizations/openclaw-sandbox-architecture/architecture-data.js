@@ -1,5 +1,5 @@
 const gatewayRevision = "b0e8a985ee11ac94aa76513f4da6b5693334c409";
-const windowsNodeRevision = "ccd64bbb7d687d9929091109c8d722ad9ba962d9";
+const windowsNodeRevision = "a76c85218c7d6b82f2fa7234ee7e9c11848a3f0d";
 const mxcRevision = "b336f54dec3b";
 const gatewayRfcRevision = "ae9f4a2ed27468a4a6a86edfa183674ccf4d63c0";
 
@@ -81,6 +81,64 @@ const nodeContainerExample = `{
     "preservePolicy": false
   }
 }`;
+
+const gatewayProcessControls = [
+  {
+    label: "Network",
+    value: "Blocked",
+    detail:
+      "No internet or local-network capability is granted. The plugin's explicit network: default option adds outbound internet access, but local network access remains blocked.",
+  },
+  {
+    label: "Files and folders",
+    value: "Project read-only, temp writable",
+    detail:
+      "The project and required system paths are read-only by default. Protected skill sources are mounted read-only when present. A sandbox temp directory is writable; additional read-only and read-write path lists start empty.",
+  },
+  {
+    label: "Clipboard",
+    value: "Blocked",
+    detail:
+      "The generated MXC configuration sets clipboard to none, so the contained process cannot read from or write to the caller's clipboard.",
+  },
+  {
+    label: "UI",
+    value: "Disabled",
+    detail:
+      "Win32 UI access and input injection are disabled. ProcessContainer handle and atom isolation remain at the restrictive container setting.",
+  },
+];
+
+const nodeProcessControls = [
+  {
+    label: "Network",
+    value: "Blocked",
+    detail:
+      "Outbound network is disabled and no internet capability is granted. The node operator can explicitly enable outbound access.",
+  },
+  {
+    label: "Files and folders",
+    value: "CWD read-only, scratch writable",
+    detail:
+      "Documents, Downloads, Desktop, and custom-folder settings add no grants by default. A requested working directory is implicitly granted read-only unless denied; backend-safe PATH directories are read-only, and per-run scratch is writable.",
+  },
+  {
+    label: "Clipboard",
+    value: "Blocked",
+    detail:
+      "The default clipboard mode is None. Read, write, or read-write access requires an explicit node setting.",
+  },
+  {
+    label: "UI",
+    value: "Disabled",
+    detail:
+      "Win32 UI access and input injection are blocked, with ProcessContainer isolation set to container. The node operator can explicitly allow Windows UI.",
+  },
+];
+
+function withControlState(controls, state) {
+  return controls.map((control) => ({ ...control, state }));
+}
 
 const agentSessionSchema = `type IsolationSessionProvisionConfig = {
   version?: string; // defaults to SDK-supported version
@@ -323,6 +381,9 @@ export const boundaryDetails = {
       { label: "Default network", value: "Blocked" },
       { label: "Effective timeout", value: "300 seconds" },
     ],
+    controlIntro:
+      "Effective defaults for a Gateway-local command when the MXC plugin is enabled. These values come from the plugin's generated ProcessContainer configuration, not from the proposed per-tool RFC.",
+    controls: withControlState(gatewayProcessControls, "Current plugin default"),
     schema: gatewayContainerSchema,
     example: gatewayContainerExample,
     options: [
@@ -380,6 +441,9 @@ export const boundaryDetails = {
       { label: "Default timeout", value: "30 seconds" },
       { label: "Default output limit", value: "4 MiB" },
     ],
+    controlIntro:
+      "Effective defaults when the Windows node successfully launches MXC. If MXC is unavailable, the node currently falls back to uncontained host execution unless strict fallback blocking is enabled.",
+    controls: withControlState(nodeProcessControls, "Current node default"),
     schema: nodeSettingsSchema,
     example: nodeContainerExample,
     options: [
@@ -470,6 +534,9 @@ export const boundaryDetails = {
       { label: "Path canonicalization", value: "On the node" },
       { label: "Permission model", value: "Intersection with outer identity" },
     ],
+    controlIntro:
+      "The target architecture retains the current Windows-node ProcessContainer defaults. The nested placement is proposed; no separate target-policy default has been approved.",
+    controls: withControlState(nodeProcessControls, "Current default; target nesting proposed"),
     schema: nodeSettingsSchema,
     example: nodeContainerExample,
     options: [
@@ -580,6 +647,12 @@ export const boundaryDetails = {
       { label: "Documents path", value: "Agent User's Documents" },
       { label: "Permission model", value: "Intersection with outer identity" },
     ],
+    controlIntro:
+      "The proposed nested boundary starts from the current Gateway MXC defaults shown here. Whether OpenClaw changes those product defaults for the Agent User deployment remains open.",
+    controls: withControlState(
+      gatewayProcessControls,
+      "Current inner default; Agent User nesting proposed",
+    ),
     schema: `${gatewayContainerSchema}
 
 // Restrictive per-tool fragment proposed by RFC 0026

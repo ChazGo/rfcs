@@ -425,6 +425,16 @@ marker path {
 
 .drawer-header h2 {
   font-size: clamp(1.7rem, 4vw, 2.5rem);
+  overflow-wrap: anywhere;
+}
+
+.drawer-header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.control-card {
+  min-width: 0;
 }
 
 .icon-action {
@@ -558,6 +568,7 @@ marker path {
   color: var(--ink);
   font-size: 1.15rem;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .control-card .control-value + p {
