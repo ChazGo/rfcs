@@ -129,13 +129,35 @@ function renderSources(sources) {
     .join("");
 }
 
-function renderDetails(detail) {
-  drawerKicker.textContent = detail.kicker;
-  drawerTitle.textContent = detail.title;
-  drawerContent.innerHTML = `
-    <div>${detail.statuses.map(renderStatus).join(" ")}</div>
-    <p class="detail-summary">${escapeHtml(detail.summary)}</p>
-    ${renderFacts(detail.facts)}
+function renderControls(detail) {
+  if (!detail.controls?.length) {
+    return "";
+  }
+
+  return `
+    <section class="detail-section">
+      <h3>Default control summary</h3>
+      <p class="control-intro">${escapeHtml(detail.controlIntro)}</p>
+      <div class="control-grid">
+        ${detail.controls
+          .map(
+            ({ label, value, detail: explanation, state }) => `
+              <article class="control-card">
+                <div class="control-card-heading">
+                  <h4>${escapeHtml(label)}</h4>
+                  <span>${escapeHtml(state)}</span>
+                </div>
+                <p class="control-value">${escapeHtml(value)}</p>
+                <p>${escapeHtml(explanation)}</p>
+              </article>`,
+          )
+          .join("")}
+      </div>
+    </section>`;
+}
+
+function renderTechnicalDetails(detail) {
+  return `
     ${
       detail.schema
         ? `<section class="detail-section">
@@ -151,6 +173,64 @@ function renderDetails(detail) {
             <pre class="code-block"><code>${escapeHtml(detail.example)}</code></pre>
           </section>`
         : ""
+    }`;
+}
+
+function renderDetails(detail, detailId) {
+  const hasControlToggle = detail.controls?.length && (detail.schema || detail.example);
+  const defaultsTabId = `${detailId}-defaults-tab`;
+  const technicalTabId = `${detailId}-technical-tab`;
+  const defaultsPanelId = `${detailId}-defaults-panel`;
+  const technicalPanelId = `${detailId}-technical-panel`;
+  drawerKicker.textContent = detail.kicker;
+  drawerTitle.textContent = detail.title;
+  drawerContent.innerHTML = `
+    <div>${detail.statuses.map(renderStatus).join(" ")}</div>
+    <p class="detail-summary">${escapeHtml(detail.summary)}</p>
+    ${renderFacts(detail.facts)}
+    ${
+      hasControlToggle
+        ? `<div class="detail-view-tabs" role="tablist" aria-label="Detail format">
+            <button
+              id="${defaultsTabId}"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="${defaultsPanelId}"
+              data-detail-panel="defaults"
+            >
+              Defaults
+            </button>
+            <button
+              id="${technicalTabId}"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="${technicalPanelId}"
+              data-detail-panel="technical"
+              tabindex="-1"
+            >
+              Schema and lifecycle
+            </button>
+          </div>
+          <div
+            id="${defaultsPanelId}"
+            role="tabpanel"
+            aria-labelledby="${defaultsTabId}"
+            data-detail-panel-content="defaults"
+          >
+            ${renderControls(detail)}
+          </div>
+          <div
+            id="${technicalPanelId}"
+            role="tabpanel"
+            aria-labelledby="${technicalTabId}"
+            data-detail-panel-content="technical"
+            hidden
+          >
+            ${renderTechnicalDetails(detail)}
+          </div>`
+        : `${renderControls(detail)}${renderTechnicalDetails(detail)}`
     }
     ${
       detail.options?.length
@@ -172,6 +252,39 @@ function renderDetails(detail) {
       <h3>Public sources</h3>
       <div class="source-list">${renderSources(detail.sources)}</div>
     </section>`;
+
+  const detailTabs = [...drawerContent.querySelectorAll("[data-detail-panel]")];
+  for (const tab of detailTabs) {
+    tab.addEventListener("click", () => selectDetailPanel(tab.dataset.detailPanel));
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+        return;
+      }
+      event.preventDefault();
+      const currentIndex = detailTabs.indexOf(tab);
+      const nextIndex =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? detailTabs.length - 1
+            : event.key === "ArrowRight"
+              ? (currentIndex + 1) % detailTabs.length
+              : (currentIndex - 1 + detailTabs.length) % detailTabs.length;
+      detailTabs[nextIndex].focus();
+      selectDetailPanel(detailTabs[nextIndex].dataset.detailPanel);
+    });
+  }
+}
+
+function selectDetailPanel(panelName) {
+  for (const tab of drawerContent.querySelectorAll("[data-detail-panel]")) {
+    const selected = tab.dataset.detailPanel === panelName;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  }
+  for (const panel of drawerContent.querySelectorAll("[data-detail-panel-content]")) {
+    panel.hidden = panel.dataset.detailPanelContent !== panelName;
+  }
 }
 
 function openDetails(detailId, sourceElement = null, options = {}) {
@@ -182,7 +295,7 @@ function openDetails(detailId, sourceElement = null, options = {}) {
 
   activeBoundaryId = detailId;
   triggerElement = sourceElement ?? triggerElement;
-  renderDetails(detail);
+  renderDetails(detail, detailId);
   drawer.classList.add("is-open");
   drawer.setAttribute("aria-hidden", "false");
   drawerBackdrop.hidden = false;

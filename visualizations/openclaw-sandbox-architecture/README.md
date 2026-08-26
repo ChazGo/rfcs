@@ -4,6 +4,10 @@ This static site compares current public OpenClaw sandbox boundaries with the
 proposed Agent User Gateway architecture. It is intentionally separate from RFC
 0026 and is not part of that RFC's pull request.
 
+Boundary details lead with concise effective defaults where those defaults need
+review. The technical schema and lifecycle example remain available through the
+detail-view toggle.
+
 ## Local preview
 
 From the repository root:

@@ -1,6 +1,6 @@
 const gatewayRevision = "b0e8a985ee11ac94aa76513f4da6b5693334c409";
 const windowsNodeRevision = "ccd64bbb7d687d9929091109c8d722ad9ba962d9";
-const mxcRevision = "d2c876a0c24a2eb3c79d3a3f1885498bf61e05f7";
+const mxcRevision = "b336f54dec3b";
 const gatewayRfcRevision = "ae9f4a2ed27468a4a6a86edfa183674ccf4d63c0";
 
 const current = { kind: "current", label: "Current public source" };
@@ -139,12 +139,22 @@ console.log(metadata?.agentUserName);`;
 const agentSessionSources = [
   {
     label: "MXC state-aware Isolation Session TypeScript API",
-    url: `https://github.com/microsoft/mxc/blob/${mxcRevision}/docs/isolation-session/state-aware-typescript.md#L42-L115`,
+    url: `https://github.com/microsoft/mxc/blob/${mxcRevision}/docs/isolation-session/state-aware-typescript.md#L42-L107`,
     revision: `microsoft/mxc @ ${mxcRevision.slice(0, 12)}`,
   },
   {
-    label: "MXC state-aware SDK lifecycle implementation",
-    url: `https://github.com/microsoft/mxc/blob/${mxcRevision}/sdk/node/src/state-aware.ts#L43-L207`,
+    label: "MXC Isolation Session policy enforcement",
+    url: `https://github.com/microsoft/mxc/blob/${mxcRevision}/src/backends/isolation_session/common/src/policy.rs#L5-L133`,
+    revision: `microsoft/mxc @ ${mxcRevision.slice(0, 12)}`,
+  },
+  {
+    label: "MXC Agent User and workspace lifecycle",
+    url: `https://github.com/microsoft/mxc/blob/${mxcRevision}/src/backends/isolation_session/common/src/manager.rs#L44-L198`,
+    revision: `microsoft/mxc @ ${mxcRevision.slice(0, 12)}`,
+  },
+  {
+    label: "MXC Isolation Session process I/O",
+    url: `https://github.com/microsoft/mxc/blob/${mxcRevision}/src/backends/isolation_session/common/src/process_options.rs#L15-L31`,
     revision: `microsoft/mxc @ ${mxcRevision.slice(0, 12)}`,
   },
   {
@@ -485,6 +495,38 @@ export const boundaryDetails = {
       { label: "Proposed default", value: "Off / explicit opt-in" },
       { label: "Proposed fallback", value: "Fail closed" },
     ],
+    controlIntro:
+      "Review focus: make the effective network, files, clipboard, and UI posture explicit. These are current MXC backend facts; OpenClaw's product defaults and configurable controls remain proposed or open.",
+    controls: [
+      {
+        label: "Network",
+        value: "Open",
+        detail:
+          "Outbound and local network access are unrestricted. MXC requires an explicit allow acknowledgment and cannot filter hosts, deny network, or enforce a proxy for this backend.",
+        state: "Current, fixed by backend",
+      },
+      {
+        label: "Files and folders",
+        value: "Agent User ACLs",
+        detail:
+          "The session gets the Agent User's own profile and normal Windows ACL access, not the signed-in user's profile. MXC provides one shared ephemeral staging directory; host folder grants and denies are unsupported.",
+        state: "Current, fixed by identity",
+      },
+      {
+        label: "Clipboard",
+        value: "Session-local clipboard works",
+        detail:
+          "The Agent User session has its own clipboard, isolated from the signed-in user's clipboard. MXC currently exposes no policy switch to disable it or redirect the host clipboard.",
+        state: "Current, not configurable",
+      },
+      {
+        label: "UI",
+        value: "Enabled inside isolated session",
+        detail:
+          "Processes can create windows and use GDI in the Agent User session, while the session boundary isolates that UI from the signed-in user's desktop. MXC does not accept a UI restriction policy here.",
+        state: "Current, not configurable",
+      },
+    ],
     schema: agentSessionSchema,
     example: agentSessionExample,
     options: [
@@ -498,6 +540,7 @@ export const boundaryDetails = {
       "<strong>Network acknowledgment:</strong> the current Isolation Session provision API requires unrestricted network values; it is not a network filtering policy.",
       "<strong>Staging only:</strong> <code>ephemeralWorkspacePath</code> is a caller-to-Agent-User staging directory and does not automatically become process CWD.",
       "<strong>Path identity:</strong> relative and profile paths resolve inside the Agent User session.",
+      "<strong>Meeting correction:</strong> the Agent User clipboard is session-local, not disabled. This differs from the nested ProcessContainer default, where clipboard access is blocked.",
     ],
     sources: agentSessionSources,
   },
