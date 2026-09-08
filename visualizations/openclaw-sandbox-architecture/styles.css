@@ -66,10 +66,38 @@ a {
 }
 
 .page-header,
+.site-nav,
 main,
 footer {
   width: min(1440px, calc(100% - 2rem));
   margin-inline: auto;
+}
+
+.site-nav {
+  display: flex;
+  gap: 0.45rem;
+  padding-top: 1rem;
+}
+
+.site-nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+.site-nav a[aria-current="page"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgb(26 39 64 / 10%);
+}
+
+.site-nav a:focus-visible {
+  outline: 4px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .page-header {

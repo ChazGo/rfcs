@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Proposed UI and trust-boundary design for OpenClaw Minimal and YOLO execution modes on Windows."
+    />
+    <title>OpenClaw Minimal / YOLO design</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-mode="minimal">
+    <a class="skip-link" href="#design">Skip to design</a>
+    <nav class="site-nav" aria-label="Design pages">
+      <a href="../">Architecture</a>
+      <a aria-current="page" href="./">Minimal / YOLO design</a>
+    </nav>
+
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">OpenClaw Windows design proposal</p>
+        <h1>Who chooses how the Gateway runs?</h1>
+        <p class="lede">
+          Explore the proposed first-step Minimal and YOLO experience, where the
+          setting is managed, and why the Gateway must not be able to remove its
+          own outer containment boundary.
+        </p>
+      </div>
+      <div class="status-stack" aria-label="Design status">
+        <span class="status">Proposed</span>
+        <span class="status">PM wording pending</span>
+      </div>
+    </header>
+
+    <main id="design">
+      <section class="section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">First-step execution setting</p>
+            <h2>Compare the two proposed choices</h2>
+          </div>
+          <p>
+            Minimal is the recommended managed Windows path. YOLO removes the
+            Agent User boundary and is shown as a separate reduced-containment
+            posture pending product confirmation.
+          </p>
+        </div>
+
+        <div class="mode-selector" aria-label="Execution mode">
+          <button class="mode-choice" type="button" data-mode="minimal" aria-pressed="true">
+            <strong>Minimal</strong>
+            <span>Gateway runs in a dedicated Agent User Session.</span>
+          </button>
+          <button class="mode-choice" type="button" data-mode="yolo" aria-pressed="false">
+            <strong>YOLO</strong>
+            <span>Gateway runs natively with the signed-in user's access.</span>
+          </button>
+        </div>
+
+        <div id="mode-panel" class="mode-panel" aria-live="polite"></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Trust boundary</p>
+            <h2>The Gateway can observe, not rewrite</h2>
+          </div>
+          <p>
+            Package immutability protects code provenance. A separate
+            launcher-owned store protects the human's execution-mode choice.
+          </p>
+        </div>
+
+        <div class="boundary-map" aria-label="Execution-mode authority flow">
+          <div class="boundary-node">
+            <strong>Human or enterprise policy</strong>
+            <span>Selects or locks the allowed posture.</span>
+          </div>
+          <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
+          <div class="boundary-node authority">
+            <strong>Companion / bootstrapper</strong>
+            <span>Writes launcher-owned host state outside the Agent User profile.</span>
+          </div>
+          <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
+          <div class="boundary-node">
+            <strong>Host launcher</strong>
+            <span>Validates the choice on every start and establishes the boundary.</span>
+          </div>
+        </div>
+
+        <div class="boundary-map" aria-label="Denied write path">
+          <div class="boundary-node denied">
+            <strong>Gateway and every path it exposes</strong>
+            <span>
+              Agents, tools, skills, MCP, plugins, and config APIs cannot write,
+              request, or trigger an outer-mode change.
+            </span>
+          </div>
+          <div class="boundary-arrow" aria-hidden="true">&times;</div>
+          <div class="boundary-node authority">
+            <strong>Launcher-owned setting</strong>
+            <span>
+              Companion or enterprise management verifies authoritative status.
+              Gateway-reported status is informational only.
+            </span>
+          </div>
+          <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
+          <div class="boundary-node">
+            <strong>Minimal or YOLO launch</strong>
+            <span>No silent fallback between postures.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Configuration surfaces</p>
+            <h2>One authority, three experiences</h2>
+          </div>
+          <p>
+            The bootstrapper and Companion own changes. The Gateway Web UI is a
+            status and handoff surface because it runs inside the thing being
+            controlled.
+          </p>
+        </div>
+
+        <div class="surface-tabs" role="tablist" aria-label="Configuration surface">
+          <button
+            id="surface-tab-cli"
+            type="button"
+            role="tab"
+            aria-controls="surface-panel"
+            aria-selected="true"
+            data-surface="cli"
+          >
+            Bootstrapper CLI
+          </button>
+          <button
+            id="surface-tab-web"
+            type="button"
+            role="tab"
+            aria-controls="surface-panel"
+            aria-selected="false"
+            data-surface="web"
+            tabindex="-1"
+          >
+            Gateway Web UI
+          </button>
+          <button
+            id="surface-tab-companion"
+            type="button"
+            role="tab"
+            aria-controls="surface-panel"
+            aria-selected="false"
+            data-surface="companion"
+            tabindex="-1"
+          >
+            Windows Companion
+          </button>
+        </div>
+
+        <div
+          id="surface-panel"
+          class="surface-panel"
+          role="tabpanel"
+          aria-labelledby="surface-tab-cli"
+        ></div>
+        <div class="surface-actions">
+          <button id="copy-cli" class="secondary-action" type="button">Copy proposed commands</button>
+          <span id="copy-status" role="status"></span>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Do not conflate these controls</p>
+            <h2>Outer mode versus inner command sandbox</h2>
+          </div>
+          <p>
+            Minimal / YOLO chooses the Gateway's Windows identity and session.
+            MXC presets choose restrictions for individual commands after the
+            Gateway is already running.
+          </p>
+        </div>
+        <div class="layer-comparison">
+          <article class="layer-card">
+            <h3>Gateway execution mode</h3>
+            <p>
+              Minimal or YOLO. Owned by the host launcher and Windows Companion.
+              Establishes or removes the outer Agent User Session.
+            </p>
+          </article>
+          <article class="layer-card">
+            <h3>MXC command sandbox preset</h3>
+            <p>
+              Locked Down, Recommended, or Unprotected in current working
+              implementations. Owned by the Gateway or Windows node for nested,
+              per-command ProcessContainers.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-card open-decision">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Open product decision</p>
+            <h2>Can YOLO be part of the managed Windows path?</h2>
+          </div>
+          <p>
+            The current first-step wording says YOLO runs without a session.
+            The managed Windows direction says the local Gateway must remain in
+            a dedicated Agent User Session with no uncontained fallback.
+          </p>
+        </div>
+        <ul class="decision-list">
+          <li>
+            Recommended: keep Minimal as the managed path and make YOLO a
+            separate advanced/unmanaged installation posture.
+          </li>
+          <li>
+            Alternative: redefine YOLO so it retains the Agent User Session,
+            then specify what meaningful control distinguishes it from Minimal.
+          </li>
+          <li>
+            Do not silently turn a contained installation into native execution
+            because the session is unavailable.
+          </li>
+        </ul>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Public evidence</p>
+            <h2>Sources for architecture review</h2>
+          </div>
+          <p>
+            Internal product documents informed this proposal but are not linked
+            or quoted on this public site.
+          </p>
+        </div>
+        <ul id="source-list" class="source-list"></ul>
+      </section>
+
+      <noscript>
+        <section class="section-card">
+          <h2>JavaScript is optional for the core design</h2>
+          <p>
+            Minimal runs the managed Gateway inside an Agent User Session. YOLO
+            removes that outer boundary. Only the human-side bootstrapper or
+            Windows Companion should be able to choose between those postures.
+          </p>
+        </section>
+      </noscript>
+    </main>
+
+    <footer>
+      Proposed design for review. This page does not change OpenClaw settings or
+      represent shipped behavior.
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
