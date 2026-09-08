@@ -215,7 +215,7 @@ main {
   box-shadow: 0 0 0 3px rgb(23 105 224 / 12%);
 }
 
-.mode-choice[data-mode="yolo"][aria-pressed="true"] {
+.mode-choice[data-mode="disabled"][aria-pressed="true"] {
   border-color: var(--red);
   background: var(--red-soft);
   box-shadow: 0 0 0 3px rgb(161 38 29 / 10%);
@@ -255,7 +255,7 @@ main {
   font-weight: 800;
 }
 
-body[data-mode="yolo"] .mode-badge {
+body[data-mode="disabled"] .mode-badge {
   background: var(--red-soft);
   color: var(--red);
 }
@@ -296,6 +296,13 @@ body[data-mode="yolo"] .mode-badge {
   background: var(--amber-soft);
   color: #5f4100;
   line-height: 1.55;
+}
+
+.naming-note {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .boundary-map {
@@ -564,7 +571,7 @@ a:focus-visible {
     color: #9ff0d1;
   }
 
-  body[data-mode="yolo"] .mode-badge {
+  body[data-mode="disabled"] .mode-badge {
     color: #ffb4ad;
   }
 }

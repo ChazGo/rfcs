@@ -7,7 +7,7 @@ const surfacePanel = document.querySelector("#surface-panel");
 const copyButton = document.querySelector("#copy-cli");
 const copyStatus = document.querySelector("#copy-status");
 
-let activeMode = "minimal";
+let activeMode = "enabled";
 let activeSurface = "cli";
 
 function escapeHtml(value) {
@@ -22,7 +22,7 @@ function escapeHtml(value) {
 function stateFromHash() {
   const [requestedMode, requestedSurface] = window.location.hash.replace(/^#/, "").split("/");
   return {
-    mode: modes[requestedMode] ? requestedMode : "minimal",
+    mode: modes[requestedMode] ? requestedMode : "enabled",
     surface: surfaces[requestedSurface] ? requestedSurface : "cli",
   };
 }
@@ -32,7 +32,7 @@ function updateHash() {
 }
 
 function renderMode(modeId, syncHash = true) {
-  activeMode = modes[modeId] ? modeId : "minimal";
+  activeMode = modes[modeId] ? modeId : "enabled";
   const mode = modes[activeMode];
 
   for (const button of modeButtons) {

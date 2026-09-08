@@ -1,29 +1,29 @@
 export const modes = {
-  minimal: {
-    id: "minimal",
-    name: "Minimal",
-    recommendation: "Recommended managed path",
+  enabled: {
+    id: "enabled",
+    name: "Enabled",
+    recommendation: "Recommended",
     summary: "Run the Gateway in a dedicated Agent User Session.",
     execution: "Agent User Session",
     identity: "Separate Agent User identity",
     network: "Available; not constrained by this mode",
     files: "Only locations available to the Agent User",
     processContainment: "None in the first step",
-    managed: "Managed Windows path",
+    managed: "Gateway isolation on",
     warning:
       "The outer session remains mandatory. If session creation fails, launch fails instead of falling back to the human identity.",
   },
-  yolo: {
-    id: "yolo",
-    name: "YOLO",
-    recommendation: "Advanced, reduced-containment path",
+  disabled: {
+    id: "disabled",
+    name: "Disabled",
+    recommendation: "Advanced, reduced containment",
     summary: "Run the Gateway natively as the signed-in user.",
     execution: "Native host process",
     identity: "Signed-in user identity",
     network: "Native process behavior",
     files: "Native user access",
     processContainment: "None",
-    managed: "Reduced-containment Windows posture",
+    managed: "Gateway isolation off",
     warning:
       "This removes the Agent User boundary and runs the Gateway with the signed-in user's native access. It requires an explicit human-side choice.",
   },
@@ -42,7 +42,6 @@ clawctl gateway-isolation disable
 clawctl gateway-isolation disable --force`,
     notes: [
       "Command spelling is proposed and still needs launcher-owner review.",
-      "Enabled maps to Minimal. Disabled maps to YOLO.",
       "Disabling prompts because it removes the Agent User boundary.",
       "--force bypasses that prompt for explicit automation.",
       "Changing an existing installation is a host lifecycle operation, not openclaw config set.",
@@ -53,20 +52,20 @@ clawctl gateway-isolation disable --force`,
     badge: "Status and handoff",
     title: "Show posture without exposing a downgrade",
     copy:
-      "The Web UI runs with the Gateway. It can display informational posture, but only a trusted Windows surface can verify or change the outer execution mode.",
+      "The Web UI runs with the Gateway. It can display informational posture, but only a trusted Windows surface can verify or change Gateway isolation.",
     notes: [
       "Gateway-reported posture is informational, not security attestation.",
       "No Gateway path can request or trigger a write, including config RPC, agents, tools, skills, MCP, and plugins.",
-      "YOLO may offer a handoff to enable Minimal. Minimal does not offer a Web UI path to enable YOLO.",
+      "When isolation is disabled, the Web UI may hand off enabling it. When isolation is enabled, the Web UI does not offer a path to disable it.",
       "MXC plugin presets remain separate per-command controls.",
-      "If Companion is unavailable in YOLO, offer clawctl gateway-isolation enable instead of a silent no-op.",
+      "If Companion is unavailable while isolation is disabled, offer clawctl gateway-isolation enable instead of a silent no-op.",
     ],
     examples: {
-      minimal: `Reported mode: Minimal
+      enabled: `Reported Gateway isolation: Enabled
 Authoritative status: Windows Companion
 
 [Open Windows Companion status]`,
-      yolo: `Reported mode: YOLO
+      disabled: `Reported Gateway isolation: Disabled
 Authoritative status: Windows Companion
 
 [Enable Gateway isolation in Windows Companion]
@@ -81,15 +80,15 @@ Authoritative status: Windows Companion
       "The Companion app is the preferred graphical surface because it runs in the signed-in user session and can call the launcher-owned management contract.",
     example: `Gateway isolation
 
-(*) Minimal - Recommended
+(*) Enabled - Recommended
     Run in a dedicated Agent User Session
 
-( ) YOLO - Advanced
+( ) Disabled - Advanced
     Run natively with your Windows access
 
 [Apply and restart Gateway]`,
     notes: [
-      "Show the current mode and whether enterprise policy locks it.",
+      "Show whether Gateway isolation is enabled and whether enterprise policy locks it.",
       "A change requires a visible restart or reprovision step.",
       "The app calls the host launcher. It does not edit files in the Agent User profile.",
     ],

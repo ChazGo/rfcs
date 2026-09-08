@@ -30,5 +30,5 @@ The site has no third-party runtime dependencies or build step.
 ## Design pages
 
 - `/` explains current and proposed Windows sandbox boundaries.
-- `/access-modes/` explores the proposed first-step Minimal / YOLO execution
-  choice, UI ownership, and the host-side trust boundary.
+- `/access-modes/` explores enabling or disabling Gateway isolation, UI
+  ownership, and the host-side trust boundary.

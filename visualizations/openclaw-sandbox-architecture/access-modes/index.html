@@ -5,31 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Proposed UI and trust-boundary design for OpenClaw Minimal and YOLO execution modes on Windows."
+      content="Proposed UI and trust-boundary design for enabling or disabling OpenClaw Gateway isolation on Windows."
     />
-    <title>OpenClaw Minimal / YOLO design</title>
+    <title>Enable or disable OpenClaw Gateway isolation</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body data-mode="minimal">
+  <body data-mode="enabled">
     <a class="skip-link" href="#design">Skip to design</a>
     <nav class="site-nav" aria-label="Design pages">
       <a href="../">Architecture</a>
-      <a aria-current="page" href="./">Minimal / YOLO design</a>
+      <a aria-current="page" href="./">Gateway isolation design</a>
     </nav>
 
     <header class="page-header">
       <div>
         <p class="eyebrow">OpenClaw Windows design proposal</p>
-        <h1>Who chooses how the Gateway runs?</h1>
+        <h1>Enable or disable Gateway isolation</h1>
         <p class="lede">
-          Explore the proposed Gateway isolation setting, its Minimal and YOLO
-          postures, and why the Gateway must not be able to remove its own outer
-          containment boundary.
+          Explore how Gateway isolation changes the Windows identity and session
+          used to run OpenClaw, where the setting is managed, and why the Gateway
+          must not be able to remove its own outer containment boundary.
         </p>
       </div>
       <div class="status-stack" aria-label="Design status">
         <span class="status">Proposed</span>
-        <span class="status">PM wording pending</span>
       </div>
     </header>
 
@@ -38,27 +37,33 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Gateway isolation setting</p>
-            <h2>Compare the two proposed choices</h2>
+            <h2>Compare enabled and disabled</h2>
           </div>
           <p>
-            Minimal is the recommended managed Windows path. YOLO removes the
+            Enabled is the recommended Windows posture. Disabled removes the
             Agent User boundary and runs the Gateway as the signed-in user. It
             is an explicit advanced, reduced-containment choice.
           </p>
         </div>
 
         <div class="mode-selector" aria-label="Gateway isolation posture">
-          <button class="mode-choice" type="button" data-mode="minimal" aria-pressed="true">
-            <strong>Minimal</strong>
+          <button class="mode-choice" type="button" data-mode="enabled" aria-pressed="true">
+            <strong>Enabled</strong>
             <span>Gateway runs in a dedicated Agent User Session.</span>
           </button>
-          <button class="mode-choice" type="button" data-mode="yolo" aria-pressed="false">
-            <strong>YOLO</strong>
+          <button class="mode-choice" type="button" data-mode="disabled" aria-pressed="false">
+            <strong>Disabled</strong>
             <span>Gateway runs natively with the signed-in user's access.</span>
           </button>
         </div>
 
         <div id="mode-panel" class="mode-panel" aria-live="polite"></div>
+        <p class="naming-note">
+          <strong>Naming transition (September 8, 2026):</strong> Earlier drafts
+          called Enabled <em>Minimal</em> and Disabled <em>YOLO</em>. PM input
+          resolved the user-facing terminology to enable or disable Gateway
+          isolation.
+        </p>
       </section>
 
       <section class="section-card">
@@ -69,8 +74,8 @@
           </div>
           <p>
             The bootstrapper and Companion own changes. The Gateway Web UI
-            reports status and, only from YOLO, hands off enabling Minimal to a
-            trusted Windows surface.
+            reports status and, only when isolation is disabled, hands off
+            enabling it to a trusted Windows surface.
           </p>
         </div>
 
@@ -155,7 +160,7 @@
             <strong>Gateway and every path it exposes</strong>
             <span>
               Agents, tools, skills, MCP, plugins, and config APIs cannot write,
-              request, or trigger an outer-mode change.
+              request, or trigger a Gateway isolation change.
             </span>
           </div>
           <div class="boundary-arrow" aria-hidden="true">&times;</div>
@@ -168,7 +173,7 @@
           </div>
           <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
           <div class="boundary-node">
-            <strong>Minimal or YOLO launch</strong>
+            <strong>Isolated or native launch</strong>
             <span>No silent fallback between postures.</span>
           </div>
         </div>
@@ -181,17 +186,17 @@
             <h2>Gateway isolation versus inner command sandbox</h2>
           </div>
           <p>
-            Minimal / YOLO chooses the Gateway's Windows identity and session.
-            MXC presets choose restrictions for individual commands after the
-            Gateway is already running.
+            Enabling or disabling Gateway isolation chooses the Gateway's
+            Windows identity and session. MXC presets choose restrictions for
+            individual commands after the Gateway is already running.
           </p>
         </div>
         <div class="layer-comparison">
           <article class="layer-card">
             <h3>Gateway isolation</h3>
             <p>
-              Minimal or YOLO. Owned by the host launcher and Windows Companion.
-              Establishes or removes the outer Agent User Session.
+              Enabled or disabled. Owned by the host launcher and Windows
+              Companion. Establishes or removes the outer Agent User Session.
             </p>
           </article>
           <article class="layer-card">
@@ -223,7 +228,7 @@
         <section class="section-card">
           <h2>JavaScript is optional for the core design</h2>
           <p>
-            Minimal runs the managed Gateway inside an Agent User Session. YOLO
+            Enabled runs the Gateway inside an Agent User Session. Disabled
             removes that outer boundary. Only the human-side bootstrapper or
             Windows Companion should be able to choose between those postures.
           </p>
