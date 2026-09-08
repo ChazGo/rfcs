@@ -42,8 +42,8 @@
           </div>
           <p>
             Minimal is the recommended managed Windows path. YOLO removes the
-            Agent User boundary and is shown as a separate reduced-containment
-            posture pending product confirmation.
+            Agent User boundary and runs the Gateway as the signed-in user. It
+            is an explicit advanced, reduced-containment choice.
           </p>
         </div>
 
@@ -59,6 +59,66 @@
         </div>
 
         <div id="mode-panel" class="mode-panel" aria-live="polite"></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <div>
+            <h2>Configuration surfaces</h2>
+            <p class="section-subtitle">One authority, three experiences</p>
+          </div>
+          <p>
+            The bootstrapper and Companion own changes. The Gateway Web UI
+            reports status and, only from YOLO, hands off enabling Minimal to a
+            trusted Windows surface.
+          </p>
+        </div>
+
+        <div class="surface-tabs" role="tablist" aria-label="Configuration surface">
+          <button
+            id="surface-tab-cli"
+            type="button"
+            role="tab"
+            aria-controls="surface-panel"
+            aria-selected="true"
+            data-surface="cli"
+          >
+            Bootstrapper CLI
+          </button>
+          <button
+            id="surface-tab-web"
+            type="button"
+            role="tab"
+            aria-controls="surface-panel"
+            aria-selected="false"
+            data-surface="web"
+            tabindex="-1"
+          >
+            Gateway Web UI
+          </button>
+          <button
+            id="surface-tab-companion"
+            type="button"
+            role="tab"
+            aria-controls="surface-panel"
+            aria-selected="false"
+            data-surface="companion"
+            tabindex="-1"
+          >
+            Windows Companion
+          </button>
+        </div>
+
+        <div
+          id="surface-panel"
+          class="surface-panel"
+          role="tabpanel"
+          aria-labelledby="surface-tab-cli"
+        ></div>
+        <div class="surface-actions">
+          <button id="copy-cli" class="secondary-action" type="button">Copy proposed commands</button>
+          <span id="copy-status" role="status"></span>
+        </div>
       </section>
 
       <section class="section-card">
@@ -117,66 +177,6 @@
       <section class="section-card">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Configuration surfaces</p>
-            <h2>One authority, three experiences</h2>
-          </div>
-          <p>
-            The bootstrapper and Companion own changes. The Gateway Web UI is a
-            status and handoff surface because it runs inside the thing being
-            controlled.
-          </p>
-        </div>
-
-        <div class="surface-tabs" role="tablist" aria-label="Configuration surface">
-          <button
-            id="surface-tab-cli"
-            type="button"
-            role="tab"
-            aria-controls="surface-panel"
-            aria-selected="true"
-            data-surface="cli"
-          >
-            Bootstrapper CLI
-          </button>
-          <button
-            id="surface-tab-web"
-            type="button"
-            role="tab"
-            aria-controls="surface-panel"
-            aria-selected="false"
-            data-surface="web"
-            tabindex="-1"
-          >
-            Gateway Web UI
-          </button>
-          <button
-            id="surface-tab-companion"
-            type="button"
-            role="tab"
-            aria-controls="surface-panel"
-            aria-selected="false"
-            data-surface="companion"
-            tabindex="-1"
-          >
-            Windows Companion
-          </button>
-        </div>
-
-        <div
-          id="surface-panel"
-          class="surface-panel"
-          role="tabpanel"
-          aria-labelledby="surface-tab-cli"
-        ></div>
-        <div class="surface-actions">
-          <button id="copy-cli" class="secondary-action" type="button">Copy proposed commands</button>
-          <span id="copy-status" role="status"></span>
-        </div>
-      </section>
-
-      <section class="section-card">
-        <div class="section-heading">
-          <div>
             <p class="eyebrow">Do not conflate these controls</p>
             <h2>Outer mode versus inner command sandbox</h2>
           </div>
@@ -198,39 +198,11 @@
             <h3>MXC command sandbox preset</h3>
             <p>
               Locked Down, Recommended, or Unprotected in current working
-              implementations. Owned by the Gateway or Windows node for nested,
-              per-command ProcessContainers.
+              implementations. Owned by the Gateway MXC plugin or Windows node
+              for nested, per-command ProcessContainers.
             </p>
           </article>
         </div>
-      </section>
-
-      <section class="section-card open-decision">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Open product decision</p>
-            <h2>Can YOLO be part of the managed Windows path?</h2>
-          </div>
-          <p>
-            The current first-step wording says YOLO runs without a session.
-            The managed Windows direction says the local Gateway must remain in
-            a dedicated Agent User Session with no uncontained fallback.
-          </p>
-        </div>
-        <ul class="decision-list">
-          <li>
-            Recommended: keep Minimal as the managed path and make YOLO a
-            separate advanced/unmanaged installation posture.
-          </li>
-          <li>
-            Alternative: redefine YOLO so it retains the Agent User Session,
-            then specify what meaningful control distinguishes it from Minimal.
-          </li>
-          <li>
-            Do not silently turn a contained installation into native execution
-            because the session is unavailable.
-          </li>
-        </ul>
       </section>
 
       <section class="section-card">

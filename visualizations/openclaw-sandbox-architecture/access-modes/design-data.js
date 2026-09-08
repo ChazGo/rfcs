@@ -23,9 +23,9 @@ export const modes = {
     network: "Native process behavior",
     files: "Native user access",
     processContainment: "None",
-    managed: "Separate unmanaged posture",
+    managed: "Reduced-containment Windows posture",
     warning:
-      "This removes the Agent User boundary. It conflicts with the managed Windows Golden Path unless product requirements explicitly allow a separate native path.",
+      "This removes the Agent User boundary and runs the Gateway with the signed-in user's native access. It requires an explicit human-side choice.",
   },
 };
 
@@ -48,20 +48,26 @@ clawctl setup --execution-mode yolo`,
   web: {
     label: "Gateway Web UI",
     badge: "Status and handoff",
-    title: "Show posture, but do not own it",
+    title: "Show posture without exposing a downgrade",
     copy:
-      "The Web UI runs with the Gateway. It can display informational posture and direct the human to a trusted host surface, but only the host can verify or rewrite the outer execution mode.",
-    example: `Reported mode: Minimal
-Authoritative status: Windows Companion
-
-[Open Windows Companion settings]
-[Copy clawctl command]`,
+      "The Web UI runs with the Gateway. It can display informational posture, but only a trusted Windows surface can verify or change the outer execution mode.",
     notes: [
       "Gateway-reported posture is informational, not security attestation.",
       "No Gateway path can request or trigger a write, including config RPC, agents, tools, skills, MCP, and plugins.",
+      "YOLO may offer a handoff to enable Minimal. Minimal does not offer a Web UI path to enable YOLO.",
       "MXC plugin presets remain separate per-command controls.",
       "If Companion is unavailable, show a copyable host command instead of a silent no-op.",
     ],
+    examples: {
+      minimal: `Reported mode: Minimal
+Authoritative status: Windows Companion
+
+[Open Windows Companion status]`,
+      yolo: `Reported mode: YOLO
+Authoritative status: Windows Companion
+
+[Enable Minimal mode in Windows Companion]`,
+    },
   },
   companion: {
     label: "Windows Companion",

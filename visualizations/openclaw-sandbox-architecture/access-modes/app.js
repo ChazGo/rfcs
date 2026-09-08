@@ -59,6 +59,10 @@ function renderMode(modeId, syncHash = true) {
     </dl>
     <p class="mode-warning">${escapeHtml(mode.warning)}</p>`;
 
+  if (activeSurface === "web") {
+    renderSurface("web", false);
+  }
+
   if (syncHash) {
     updateHash();
   }
@@ -67,6 +71,7 @@ function renderMode(modeId, syncHash = true) {
 function renderSurface(surfaceId, syncHash = true) {
   activeSurface = surfaces[surfaceId] ? surfaceId : "cli";
   const surface = surfaces[activeSurface];
+  const example = surface.examples?.[activeMode] ?? surface.example;
 
   for (const tab of surfaceTabs) {
     const selected = tab.dataset.surface === activeSurface;
@@ -85,7 +90,7 @@ function renderSurface(surfaceId, syncHash = true) {
       </div>
       <p>${escapeHtml(surface.copy)}</p>
     </div>
-    <pre><code>${escapeHtml(surface.example)}</code></pre>
+    <pre><code>${escapeHtml(example)}</code></pre>
     <ul>${surface.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`;
 
   copyButton.hidden = activeSurface !== "cli";

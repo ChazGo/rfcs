@@ -164,6 +164,13 @@ main {
   letter-spacing: -0.025em;
 }
 
+.section-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--blue);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 .section-heading > p {
   margin: 0;
   color: var(--muted);
@@ -402,8 +409,7 @@ pre {
   line-height: 1.55;
 }
 
-.surface-panel li,
-.decision-list li {
+.surface-panel li {
   margin-block: 0.55rem;
   line-height: 1.5;
 }
@@ -423,13 +429,6 @@ pre {
   color: var(--ink);
   cursor: pointer;
   font-weight: 750;
-}
-
-.open-decision {
-  border-color: #dfbd55;
-  background:
-    linear-gradient(135deg, rgb(255 240 189 / 55%), transparent 55%),
-    var(--surface);
 }
 
 .layer-comparison {
