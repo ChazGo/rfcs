@@ -33,15 +33,18 @@ export const surfaces = {
   cli: {
     label: "Bootstrapper command line",
     badge: "Authoritative",
-    title: "Choose the mode before the Gateway starts",
+    title: "Manage Gateway isolation from the Windows host",
     copy:
-      "The bootstrapper runs outside the Agent User Session, so it can own setup and lifecycle changes without giving the Gateway a write path.",
-    example: `clawctl setup --execution-mode minimal
-clawctl setup --execution-mode yolo`,
+      "clawctl runs outside the Agent User Session, so it can own isolation setup and lifecycle changes without giving the Gateway a write path.",
+    example: `clawctl gateway-isolation status
+clawctl gateway-isolation enable
+clawctl gateway-isolation disable
+clawctl gateway-isolation disable --force`,
     notes: [
       "Command spelling is proposed and still needs launcher-owner review.",
-      "Minimal is the default path.",
-      "YOLO requires an explicit advanced choice and reduced-containment warning.",
+      "Enabled maps to Minimal. Disabled maps to YOLO.",
+      "Disabling prompts because it removes the Agent User boundary.",
+      "--force bypasses that prompt for explicit automation.",
       "Changing an existing installation is a host lifecycle operation, not openclaw config set.",
     ],
   },
@@ -56,7 +59,7 @@ clawctl setup --execution-mode yolo`,
       "No Gateway path can request or trigger a write, including config RPC, agents, tools, skills, MCP, and plugins.",
       "YOLO may offer a handoff to enable Minimal. Minimal does not offer a Web UI path to enable YOLO.",
       "MXC plugin presets remain separate per-command controls.",
-      "If Companion is unavailable, show a copyable host command instead of a silent no-op.",
+      "If Companion is unavailable in YOLO, offer clawctl gateway-isolation enable instead of a silent no-op.",
     ],
     examples: {
       minimal: `Reported mode: Minimal
@@ -66,7 +69,8 @@ Authoritative status: Windows Companion
       yolo: `Reported mode: YOLO
 Authoritative status: Windows Companion
 
-[Enable Minimal mode in Windows Companion]`,
+[Enable Gateway isolation in Windows Companion]
+[Copy: clawctl gateway-isolation enable]`,
     },
   },
   companion: {
@@ -75,7 +79,7 @@ Authoritative status: Windows Companion
     title: "Manage the local Gateway from the human session",
     copy:
       "The Companion app is the preferred graphical surface because it runs in the signed-in user session and can call the launcher-owned management contract.",
-    example: `Local Gateway execution
+    example: `Gateway isolation
 
 (*) Minimal - Recommended
     Run in a dedicated Agent User Session

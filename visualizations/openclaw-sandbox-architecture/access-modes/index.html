@@ -22,9 +22,9 @@
         <p class="eyebrow">OpenClaw Windows design proposal</p>
         <h1>Who chooses how the Gateway runs?</h1>
         <p class="lede">
-          Explore the proposed first-step Minimal and YOLO experience, where the
-          setting is managed, and why the Gateway must not be able to remove its
-          own outer containment boundary.
+          Explore the proposed Gateway isolation setting, its Minimal and YOLO
+          postures, and why the Gateway must not be able to remove its own outer
+          containment boundary.
         </p>
       </div>
       <div class="status-stack" aria-label="Design status">
@@ -37,7 +37,7 @@
       <section class="section-card">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">First-step execution setting</p>
+            <p class="eyebrow">Gateway isolation setting</p>
             <h2>Compare the two proposed choices</h2>
           </div>
           <p>
@@ -47,7 +47,7 @@
           </p>
         </div>
 
-        <div class="mode-selector" aria-label="Execution mode">
+        <div class="mode-selector" aria-label="Gateway isolation posture">
           <button class="mode-choice" type="button" data-mode="minimal" aria-pressed="true">
             <strong>Minimal</strong>
             <span>Gateway runs in a dedicated Agent User Session.</span>
@@ -129,11 +129,11 @@
           </div>
           <p>
             Package immutability protects code provenance. A separate
-            launcher-owned store protects the human's execution-mode choice.
+            launcher-owned store protects the human's Gateway isolation choice.
           </p>
         </div>
 
-        <div class="boundary-map" aria-label="Execution-mode authority flow">
+        <div class="boundary-map" aria-label="Gateway isolation authority flow">
           <div class="boundary-node">
             <strong>Human or enterprise policy</strong>
             <span>Selects or locks the allowed posture.</span>
@@ -178,7 +178,7 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Do not conflate these controls</p>
-            <h2>Outer mode versus inner command sandbox</h2>
+            <h2>Gateway isolation versus inner command sandbox</h2>
           </div>
           <p>
             Minimal / YOLO chooses the Gateway's Windows identity and session.
@@ -188,7 +188,7 @@
         </div>
         <div class="layer-comparison">
           <article class="layer-card">
-            <h3>Gateway execution mode</h3>
+            <h3>Gateway isolation</h3>
             <p>
               Minimal or YOLO. Owned by the host launcher and Windows Companion.
               Establishes or removes the outer Agent User Session.
