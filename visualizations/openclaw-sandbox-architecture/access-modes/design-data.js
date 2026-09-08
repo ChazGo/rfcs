@@ -48,50 +48,28 @@ clawctl gateway-isolation disable --force`,
     ],
   },
   web: {
-    label: "Gateway Web UI",
-    badge: "Status and handoff",
-    title: "Show posture without exposing a downgrade",
+    label: "Control UI",
+    badge: "Status and safe upgrade",
+    title: "Enable isolation without exposing a downgrade",
     copy:
-      "The Web UI runs with the Gateway. It can display informational posture, but only a trusted Windows surface can verify or change Gateway isolation.",
+      "When isolation is disabled, the Control UI runs as the signed-in user and can invoke the host-owned enable command. Once isolation is enabled, the Agent User cannot invoke the host-owned disable command.",
     notes: [
       "Gateway-reported posture is informational, not security attestation.",
-      "No Gateway path can request or trigger a write, including config RPC, agents, tools, skills, MCP, and plugins.",
-      "When isolation is disabled, the Web UI may hand off enabling it. When isolation is enabled, the Web UI does not offer a path to disable it.",
+      "Disabled can invoke clawctl gateway-isolation enable and restart inside the Agent User Session.",
+      "Enabled exposes status only. It does not offer or authorize gateway-isolation disable.",
+      "The host launcher validates and applies the transition; the setting is not stored in openclaw.json.",
       "MXC plugin presets remain separate per-command controls.",
-      "If Companion is unavailable while isolation is disabled, offer clawctl gateway-isolation enable instead of a silent no-op.",
     ],
     examples: {
       enabled: `Reported Gateway isolation: Enabled
-Authoritative status: Windows Companion
+Authoritative status: Windows host
 
-[Open Windows Companion status]`,
+[View isolation details]`,
       disabled: `Reported Gateway isolation: Disabled
-Authoritative status: Windows Companion
+Authoritative status: Windows host
 
-[Enable Gateway isolation in Windows Companion]
-[Copy: clawctl gateway-isolation enable]`,
+[Enable Gateway isolation]`,
     },
-  },
-  companion: {
-    label: "Windows Companion",
-    badge: "Primary graphical owner",
-    title: "Manage the local Gateway from the human session",
-    copy:
-      "The Companion app is the preferred graphical surface because it runs in the signed-in user session and can call the launcher-owned management contract.",
-    example: `Gateway isolation
-
-(*) Enabled - Recommended
-    Run in a dedicated Agent User Session
-
-( ) Disabled - Advanced
-    Run natively with your Windows access
-
-[Apply and restart Gateway]`,
-    notes: [
-      "Show whether Gateway isolation is enabled and whether enterprise policy locks it.",
-      "A change requires a visible restart or reprovision step.",
-      "The app calls the host launcher. It does not edit files in the Agent User profile.",
-    ],
   },
 };
 

@@ -7,20 +7,20 @@
       name="description"
       content="Proposed UI and trust-boundary design for enabling or disabling OpenClaw Gateway isolation on Windows."
     />
-    <title>Enable or disable OpenClaw Gateway isolation</title>
+    <title>OpenClaw Gateway isolation UX</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body data-mode="enabled">
     <a class="skip-link" href="#design">Skip to design</a>
     <nav class="site-nav" aria-label="Design pages">
       <a href="../">Architecture</a>
-      <a aria-current="page" href="./">Gateway isolation design</a>
+      <a aria-current="page" href="./">Gateway isolation UX</a>
     </nav>
 
     <header class="page-header">
       <div>
         <p class="eyebrow">OpenClaw Windows design proposal</p>
-        <h1>Enable or disable Gateway isolation</h1>
+        <h1>Gateway isolation UX</h1>
         <p class="lede">
           Explore how Gateway isolation changes the Windows identity and session
           used to run OpenClaw, where the setting is managed, and why the Gateway
@@ -70,12 +70,12 @@
         <div class="section-heading">
           <div>
             <h2>Configuration surfaces</h2>
-            <p class="section-subtitle">One authority, three experiences</p>
+            <p class="section-subtitle">One host authority, two experiences</p>
           </div>
           <p>
-            The bootstrapper and Companion own changes. The Gateway Web UI
-            reports status and, only when isolation is disabled, hands off
-            enabling it to a trusted Windows surface.
+            clawctl owns the host lifecycle. When isolation is disabled, the
+            Control UI can invoke the enable operation. When enabled, it can
+            only report status.
           </p>
         </div>
 
@@ -99,18 +99,7 @@
             data-surface="web"
             tabindex="-1"
           >
-            Gateway Web UI
-          </button>
-          <button
-            id="surface-tab-companion"
-            type="button"
-            role="tab"
-            aria-controls="surface-panel"
-            aria-selected="false"
-            data-surface="companion"
-            tabindex="-1"
-          >
-            Windows Companion
+            Control UI
           </button>
         </div>
 
@@ -130,51 +119,52 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Trust boundary</p>
-            <h2>The Gateway can observe, not rewrite</h2>
+            <h2>The Gateway can tighten isolation, not remove it</h2>
           </div>
           <p>
-            Package immutability protects code provenance. A separate
-            launcher-owned store protects the human's Gateway isolation choice.
+            The host launcher remains authoritative. The native Gateway can
+            request the safer transition, while the isolated Gateway cannot
+            remove its own boundary.
           </p>
         </div>
 
-        <div class="boundary-map" aria-label="Gateway isolation authority flow">
+        <div class="boundary-map" aria-label="Enable Gateway isolation flow">
           <div class="boundary-node">
-            <strong>Human or enterprise policy</strong>
-            <span>Selects or locks the allowed posture.</span>
+            <strong>Disabled Control UI</strong>
+            <span>Runs as the signed-in user and offers Enable isolation.</span>
           </div>
           <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
           <div class="boundary-node authority">
-            <strong>Companion / bootstrapper</strong>
-            <span>Writes launcher-owned host state outside the Agent User profile.</span>
+            <strong>clawctl gateway-isolation enable</strong>
+            <span>Requests a host-owned lifecycle transition.</span>
           </div>
           <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
           <div class="boundary-node">
             <strong>Host launcher</strong>
-            <span>Validates the choice on every start and establishes the boundary.</span>
+            <span>Validates the request, provisions the session, and restarts the Gateway.</span>
           </div>
         </div>
 
-        <div class="boundary-map" aria-label="Denied write path">
+        <div class="boundary-map" aria-label="Blocked disable Gateway isolation flow">
           <div class="boundary-node denied">
-            <strong>Gateway and every path it exposes</strong>
+            <strong>Enabled Gateway</strong>
             <span>
-              Agents, tools, skills, MCP, plugins, and config APIs cannot write,
-              request, or trigger a Gateway isolation change.
+              Runs as the Agent User and exposes no Control UI action to disable
+              isolation.
             </span>
           </div>
           <div class="boundary-arrow" aria-hidden="true">&times;</div>
           <div class="boundary-node authority">
-            <strong>Launcher-owned setting</strong>
+            <strong>clawctl gateway-isolation disable</strong>
             <span>
-              Companion or enterprise management verifies authoritative status.
-              Gateway-reported status is informational only.
+              Remains available only from the signed-in user's host context,
+              with an explicit warning or --force.
             </span>
           </div>
           <div class="boundary-arrow" aria-hidden="true">&rarr;</div>
           <div class="boundary-node">
-            <strong>Isolated or native launch</strong>
-            <span>No silent fallback between postures.</span>
+            <strong>Host-owned state</strong>
+            <span>Is not stored in openclaw.json and is validated on every start.</span>
           </div>
         </div>
       </section>
@@ -195,8 +185,9 @@
           <article class="layer-card">
             <h3>Gateway isolation</h3>
             <p>
-              Enabled or disabled. Owned by the host launcher and Windows
-              Companion. Establishes or removes the outer Agent User Session.
+              Enabled or disabled. Owned by the Windows host launcher and
+              managed through clawctl or the safe Control UI enable action.
+              Establishes or removes the outer Agent User Session.
             </p>
           </article>
           <article class="layer-card">
@@ -229,8 +220,8 @@
           <h2>JavaScript is optional for the core design</h2>
           <p>
             Enabled runs the Gateway inside an Agent User Session. Disabled
-            removes that outer boundary. Only the human-side bootstrapper or
-            Windows Companion should be able to choose between those postures.
+            removes that outer boundary. clawctl owns both transitions; the
+            Control UI can invoke only the transition from Disabled to Enabled.
           </p>
         </section>
       </noscript>

@@ -30,5 +30,5 @@ The site has no third-party runtime dependencies or build step.
 ## Design pages
 
 - `/` explains current and proposed Windows sandbox boundaries.
-- `/access-modes/` explores enabling or disabling Gateway isolation, UI
-  ownership, and the host-side trust boundary.
+- `/access-modes/` explores the Gateway isolation UX across clawctl and the
+  Control UI, including its asymmetric host-side trust boundary.
